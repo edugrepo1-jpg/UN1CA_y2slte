@@ -140,6 +140,18 @@ SEC_FLOATING_FEATURE_LCD_CONFIG_VIVIDPLUS=0
 # the y2s 48/96-Hz policy after the smali patches were disabled.
 IS_NATIVE_DISPLAY_FEATURE()
 {
+    # The Android 16 donor provides the display framework, but the r8s
+    # hardware still uses its own refresh-rate capabilities. Retain its
+    # panel-appropriate floating features rather than the S24+ HFR list.
+    if [[ "$TARGET_CODENAME" == "r8s" ]]; then
+        case "$1" in
+            SEC_FLOATING_FEATURE_COMMON_CONFIG_DYN_RESOLUTION_CONTROL|\
+            SEC_FLOATING_FEATURE_LCD_CONFIG_HFR_*|\
+            SEC_FLOATING_FEATURE_LCD_CONFIG_SEAMLESS_*)
+                return 1
+                ;;
+        esac
+    fi
     case "$1" in
         SEC_FLOATING_FEATURE_COMMON_CONFIG_DYN_RESOLUTION_CONTROL|\
         SEC_FLOATING_FEATURE_LCD_CONFIG_CONTROL_AUTO_BRIGHTNESS|\
