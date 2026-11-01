@@ -42,10 +42,17 @@ EXCLUDED = (
     "pressed", "active", "selected", "foreground", "disabled", "transparent",
     "alpha", "highlight", "status_icon", "nav_icon", "error", "warning",
     "gradient", "notif_row", "notification_row", "card", "button",
+    "subscreen", "clear_cover", "cover", "media_art", "media_player",
+    "avatar", "onboarding", "guts", "controls_panel", "content_image",
 )
 # One UI resource names changed between DZG1 / EZJ1. Reject generic app
 # backgrounds; target the actual notification shade and Quick Settings.
-UI_PARTS = ("qs", "quicksetting", "quick_setting", "notification", "shade", "panel")
+# Do not recolor unrelated Samsung subscreen panels or notification imagery.
+# The actual EZJ1 package contains those alongside the main notification shade.
+UI_PARTS = (
+    "qs", "quicksetting", "quick_setting",
+    "notification_shade", "notification_panel", "sec_panel", "shade"
+)
 BG_PARTS = ("background", "bg", "surface", "backplate", "backdrop", "base_color")
 ALWAYS_ALLOWED = {
     "sec_qs_background", "qs_detail_background_color",
