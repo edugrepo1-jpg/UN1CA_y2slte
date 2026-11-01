@@ -335,6 +335,13 @@ if $BUILD_ROM; then
         LOG_STEP_OUT
     fi
 
+    # Validate the final tree after every module, including ROM mods. The
+    # donor's permissions/configuration must not silently hide r8s hardware.
+    if [[ "$TARGET_CODENAME" == "r8s" && "$SOURCE_PLATFORM_SDK_VERSION" -ge 37 ]]; then
+        python3 "$SRC_DIR/target/r8s/validate_hardware_inputs.py" \
+            "$FW_DIR/$TARGET_FIRMWARE_PATH" "$WORK_DIR" || exit 1
+    fi
+
     if $USE_APK_CACHE; then
         RESTORE_APK_CACHE || exit 1
         BUILD_APKS "$APK_BUILD_LIST"

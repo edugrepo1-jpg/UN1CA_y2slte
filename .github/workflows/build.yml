@@ -197,6 +197,7 @@ jobs:
           name: GMHUB-OneUI9-r8s-failed-logs-${{ github.run_number }}
           if-no-files-found: warn
           retention-days: 7
+          # Retain exact donor contracts for a single-pass compatibility review.
           path: |
             out/target/r8s/*.log
             out/*.log
@@ -204,6 +205,20 @@ jobs:
             out/gmhub-oneui9-pure-black-resources.txt
             out/target/r8s/gmhub-oneui9-pure-black-resources.txt
             out/gmhub-*.txt
+            out/target/r8s/apktool/**/apktool.yml
+            out/target/r8s/apktool/system/framework/services.jar/smali*/com/android/server/vibrator/*.smali
+            out/target/r8s/apktool/system/framework/services.jar/smali*/com/android/server/lights/*.smali
+            out/target/r8s/apktool/system/framework/services.jar/smali*/com/android/server/pm/DexOptHelper.smali
+            out/target/r8s/apktool/system/framework/services.jar/smali*/com/android/server/biometrics/SemBiometricFeature.smali
+            out/target/r8s/apktool/system/framework/framework.jar/smali*/com/samsung/android/bio/fingerprint/*.smali
+            out/target/r8s/apktool/system/framework/framework.jar/smali*/com/samsung/android/app/SemMultiWindowManager.smali
+            out/target/r8s/apktool/system_ext/priv-app/SystemUI/SystemUI.apk/smali*/com/android/systemui/util/DeviceType.smali
+            out/target/r8s/apktool/system_ext/priv-app/SystemUI/SystemUI.apk/smali*/com/android/systemui/qs/animator/QSAnimView*.smali
+            out/target/r8s/apktool/system/priv-app/SamsungCamera/SamsungCamera.apk/smali*/com/sec/android/app/camera/interfaces/*.smali
+            out/target/r8s/apktool/system/priv-app/SamsungCamera/SamsungCamera.apk/smali*/com/sec/android/app/camera/util/CameraResolution*.smali
+            out/target/r8s/apktool/system/priv-app/SamsungCamera/SamsungCamera.apk/smali*/com/sec/android/app/camera/engine/core/CapabilityProvider.smali
+            out/target/r8s/apktool/system/priv-app/SamsungCamera/SamsungCamera.apk/smali*/com/samsung/android/camera/core2/node/llhdr/**/*.smali
+            out/target/r8s/apktool/system/priv-app/SamsungCamera/SamsungCamera.apk/smali*/com/samsung/android/camera/core2/node/mfhdr/**/*.smali
 
       - name: Upload to Pixeldrain, GitHub Release, Split, XML
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.build_type != 'compile'

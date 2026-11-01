@@ -489,15 +489,26 @@ if [[ "$SOURCE_FINGERPRINT_CONFIG_SENSOR" != "$TARGET_FINGERPRINT_CONFIG_SENSOR"
 
                 APPLY_PATCH "system" "system/framework/framework.jar" \
                     "$MODPATH/fingerprint/optical_fod/framework.jar/0001-Add-optical-FOD-support.patch"
-                APPLY_PATCH "system" "system/framework/services.jar" \
-                    "$MODPATH/fingerprint/optical_fod/services.jar/0001-Add-optical-FOD-support.patch"
+                if [[ "$TARGET_CODENAME" == "r8s" && "$SOURCE_PLATFORM_SDK_VERSION" -ge 37 ]]; then
+                    DECODE_APK "system" "system/framework/services.jar" || return 1
+                    python3 "$SRC_DIR/target/r8s/patch_biometric_sensor_flags.py" \
+                        "$APKTOOL_DIR/system/framework/services.jar" || return 1
+                else
+                    APPLY_PATCH "system" "system/framework/services.jar" \
+                        "$MODPATH/fingerprint/optical_fod/services.jar/0001-Add-optical-FOD-support.patch"
+                fi
 
                 if $PRESERVE_NATIVE_FINGERPRINT_UI; then
                     # The old app patches were generated from the first
                     # Android 16 implementation.  Current Settings/SystemUI
                     # already consume the optical feature exposed above and
                     # their classes/control flow have since been redesigned.
-                    LOG "Using Android 17 native optical fingerprint UI (validate exact sensor feature in SystemUI)"
+                    if [[ "$TARGET_CODENAME" == "r8s" ]]; then
+                        DECODE_APK "system_ext" "priv-app/SystemUI/SystemUI.apk" || return 1
+                        python3 "$SRC_DIR/target/r8s/patch_optical_fingerprint_ui.py" \
+                            "$APKTOOL_DIR/system_ext/priv-app/SystemUI/SystemUI.apk" || return 1
+                    fi
+                    LOG "Using native optical fingerprint UI with target sensor capability"
                 else
                     APPLY_PATCH "system" "system/priv-app/SecSettings/SecSettings.apk" \
                         "$MODPATH/fingerprint/optical_fod/SecSettings.apk/0001-Add-optical-FOD-support.patch"

@@ -84,13 +84,16 @@ class VirtualVibCompatibilityTests(unittest.TestCase):
             # dispatch contract without modifying any actual donor files.
             bash = (
                 "set -euo pipefail\n"
-                f"APKTOOL_DIR={str(root)!r}\n"
+                f"APKTOOL_DIR={root.as_posix()!r}\n"
                 "DECODE_APK() { return 0; }\n"
                 "LOG() { :; }\n"
                 "LOGE() { echo \"LOGE:$*\" >&2; }\n"
-                "ABORT() { echo \"ABORT:$*\" >&2; exit 95; }\n"
+                # Match the real build helper: ABORT returns, it does not exit.
+                "ABORT() { echo \"ABORT:$*\" >&2; return 1; }\n"
                 "SMALI_PATCH() { printf '%s|%s|%s\n' \"$3\" \"$4\" \"$5\"; }\n"
-                f"source {str(SHELL)!r}\n"
+                # Sourcing under a conditional disables Bash errexit, exactly
+                # as product_feature/customize.sh does in the real build.
+                f"source {SHELL.as_posix()!r} || exit $?\n"
             )
             return subprocess.run(
                 ["bash", "-c", bash], text=True, capture_output=True
@@ -111,8 +114,9 @@ class VirtualVibCompatibilityTests(unittest.TestCase):
 
     def test_changed_method_aborts_instead_of_breaking_android17(self):
         result = self.invoke_with_fixture(helper=True, methods=False)
-        self.assertEqual(result.returncode, 95)
+        self.assertEqual(result.returncode, 1)
         self.assertIn("missing API37 virtual vibration method", result.stderr)
+        self.assertNotIn("|null|", result.stdout)
 
 
 if __name__ == "__main__":

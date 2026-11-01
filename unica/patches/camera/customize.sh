@@ -439,6 +439,13 @@ if [ ! "$(find "$WORK_DIR/product/overlay" -maxdepth 1 -type f -name "SystemUI*"
     fi
 fi
 
+# Apply after camera library pruning so the enabled r8s Food mode keeps its
+# detector, and bind the native API37 enum to the actual target XML.
+if [[ "$TARGET_CODENAME" == "r8s" && "$SOURCE_PLATFORM_SDK_VERSION" -ge 37 ]]; then
+    . "$MODPATH/r8s_runtime.sh" || return 1
+    . "$MODPATH/r8s_hdr.sh" || return 1
+fi
+
 unset SOURCE_FIRMWARE_PATH TARGET_FIRMWARE_PATH \
     SOURCE_CAMERA_CONFIG_ACTION_CLASSIFIER TARGET_CAMERA_CONFIG_ACTION_CLASSIFIER \
     SOURCE_CAMERA_CONFIG_GPPM_SOLUTIONS TARGET_CAMERA_CONFIG_GPPM_SOLUTIONS \

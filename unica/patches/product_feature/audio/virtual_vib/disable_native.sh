@@ -15,6 +15,7 @@ R8S_VIB_HELPER="$(find "$R8S_VIB_ROOT" -type f \
     -path '*/com/android/server/vibrator/VirtualVibSoundHelper.smali' -printf '%P\n')"
 if [[ "$R8S_VIB_HELPER" == *$'\n'* ]]; then
     ABORT "More than one VirtualVibSoundHelper found in EZJ1 services.jar"
+    return 1
 fi
 
 if [[ -z "$R8S_VIB_HELPER" ]]; then
@@ -23,6 +24,7 @@ if [[ -z "$R8S_VIB_HELPER" ]]; then
     if grep -R -l -F 'Lcom/android/server/vibrator/VirtualVibSoundHelper;' \
          "$R8S_VIB_ROOT"/smali* >/dev/null 2>&1; then
         ABORT "EZJ1 references VirtualVibSoundHelper but its class is missing"
+        return 1
     fi
     LOG "- GM HUB: EZJ1 lacks legacy virtual-vibration sound helper; no framework rewrite needed"
 else
@@ -30,11 +32,14 @@ else
     for R8S_VIB_METHOD in \
         'playVirtualSoundIfNeeded(Ljava/lang/String;Landroid/os/VibrationAttributes;Z)V' \
         'stopVirtualSound(Ljava/lang/String;)V'; do
-        if ! grep -E '^\.method[[:space:]]' "$R8S_VIB_CLASS" | \
-                grep -Fq -- "$R8S_VIB_METHOD"; then
+        if ! awk -v method="$R8S_VIB_METHOD" '
+                $1 == ".method" && $NF == method { count++ }
+                END { exit count != 1 }
+            ' "$R8S_VIB_CLASS"; then
             LOGE "GM HUB: missing API37 virtual vibration method: $R8S_VIB_METHOD"
             grep -E '^\.method[[:space:]]' "$R8S_VIB_CLASS" || true
             ABORT "Cannot safely disable virtual vibration sound in One UI 9 without exact method"
+            return 1
         fi
     done
 
@@ -54,10 +59,11 @@ R8S_VIB_CONTROLLER="$(find "$R8S_VIB_SETTINGS_ROOT" -type f \
     -printf '%P\n')"
 if [[ "$R8S_VIB_CONTROLLER" == *$'\n'* ]]; then
     ABORT "More than one virtual vibration Settings controller found"
+    return 1
 elif [[ -z "$R8S_VIB_CONTROLLER" ]]; then
     LOG "- GM HUB: One UI 9 has no legacy virtual-vibration Settings controller"
-elif grep -E '^\.method[[:space:]]' "$R8S_VIB_SETTINGS_ROOT/$R8S_VIB_CONTROLLER" | \
-        grep -Fq 'getAvailabilityStatus()I'; then
+elif awk '$1 == ".method" && $NF == "getAvailabilityStatus()I" { count++ }
+          END { exit count != 1 }' "$R8S_VIB_SETTINGS_ROOT/$R8S_VIB_CONTROLLER"; then
     SMALI_PATCH "system" "system/priv-app/SecSettings/SecSettings.apk" \
         "$R8S_VIB_CONTROLLER" "return" "getAvailabilityStatus()I" "3" || return 1
     LOG "- GM HUB: hidden unsupported virtual-vibration sound setting"

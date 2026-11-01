@@ -55,17 +55,29 @@ def patch_text(text: str) -> tuple[str, bool]:
         body = body[:local.start()] + local.group(1) + ".locals 1" + body[local.end():]
         local = LOCALS.search(body)
         assert local is not None
+        locals_count = 1
+    if locals_count > 253:
+        raise ValueError("Multi-window parameter registers exceed the injected 8-bit branches")
 
     # Guard the exact OneLab call: SSRM requests a false multi-window state.
     # No new branches or field changes in Samsung's original method body.
+    # For larger donor methods p1/p2 alias registers above v15. The normal
+    # invoke and const/4 formats cannot encode those parameters directly.
+    compare = (
+        "    move-object/from16 v1, p1\n"
+        "    invoke-virtual {v0, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z\n"
+        if locals_count >= 14 else
+        "    invoke-virtual {v0, p1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z\n"
+    )
+    set_enabled = "const/16" if locals_count >= 14 else "const/4"
     injection = (
         "\n"
         "    const-string v0, \"SSRM\"\n"
-        "    invoke-virtual {v0, p1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z\n"
+        + compare +
         "    move-result v0\n"
         f"    if-eqz v0, {SENTINEL}\n"
         f"    if-nez p2, {SENTINEL}\n"
-        "    const/4 p2, 0x1\n"
+        f"    {set_enabled} p2, 0x1\n"
         f"    {SENTINEL}\n"
     )
     # Smali allows .param/.annotation declarations after .locals. Insert code
@@ -83,7 +95,7 @@ def patch_text(text: str) -> tuple[str, bool]:
             in_annotation = False
         elif not in_annotation and line and not line.startswith((
             "#", ".param", ".line", ".prologue", ".local", ".restart local",
-            ".end local",
+            ".end local", ".end param",
         )):
             break
         position = eol

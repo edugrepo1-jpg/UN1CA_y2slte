@@ -25,6 +25,50 @@ qs_anim = load("r8s_qs_anim", "target/r8s/optimize_systemui_diagnostics.py")
 
 
 class PureBlackTests(unittest.TestCase):
+    def test_landscape_night_qualifiers_are_patched_without_day_changes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = Path(tmp)
+            for folder in ('values-land-night-v37', 'values-land-notnight-v37',
+                           'color-land-night-v37'):
+                (apk / 'res' / folder).mkdir(parents=True)
+            original = ('<resources><color name="sec_qs_detail_bg_color">'
+                        '#e6fcfcfc</color></resources>')
+            night = apk / 'res/values-land-night-v37/colors.xml'
+            day = apk / 'res/values-land-notnight-v37/colors.xml'
+            night.write_text(original, encoding='utf-8')
+            day.write_text(original, encoding='utf-8')
+            selector = apk / 'res/color-land-night-v37/notification_shade_bg.xml'
+            selector.write_text(
+                '<selector xmlns:android="http://schemas.android.com/apk/res/android">'
+                '<item android:color="#ff202020" /></selector>', encoding='utf-8')
+            pure_black.apply_systemui_dark_backgrounds(apk)
+            self.assertIn('#ff000000', night.read_text(encoding='utf-8'))
+            self.assertIn('#ff000000', selector.read_text(encoding='utf-8'))
+            self.assertEqual(day.read_text(encoding='utf-8'), original)
+
+    def test_exact_ezj1_primary_surfaces_are_opaque_black_only_at_night(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = Path(tmp)
+            (apk / 'res/values').mkdir(parents=True)
+            base = apk / 'res/values/colors.xml'
+            original = (
+                '<resources>'
+                '<color name="qs_detail_background_color">@color/sec_qs_detail_bg_color</color>'
+                '<color name="sec_qs_detail_bg_color">#e6fcfcfc</color>'
+                '<color name="sec_qs_detailed_container_background">#4d000000</color>'
+                '<color name="sec_qs_switch_on_background_color">#598fff</color>'
+                '<color name="qs_switch_off_background_color">#33ffffff</color>'
+                '</resources>'
+            )
+            base.write_text(original, encoding='utf-8')
+            pure_black.apply_systemui_dark_backgrounds(apk)
+            self.assertEqual(base.read_text(encoding='utf-8'), original)
+            night = (apk / 'res/values-night/colors.xml').read_text(encoding='utf-8')
+            for name in ('qs_detail_background_color', 'sec_qs_detail_bg_color',
+                         'sec_qs_detailed_container_background'):
+                self.assertIn(f'<color name="{name}">#ff000000</color>', night)
+            self.assertNotIn('switch_on_background', night)
+            self.assertNotIn('switch_off_background', night)
     def test_only_dark_opaque_named_backgrounds_change(self):
         with tempfile.TemporaryDirectory() as tmp:
             apk = Path(tmp)
@@ -161,6 +205,43 @@ class PureBlackTests(unittest.TestCase):
             self.assertEqual(changes["res/color-night-v31/notification_shade_bg.xml"], 1)
             self.assertIn("#ff000000", night.read_text(encoding="utf-8"))
 
+    def test_night_file_color_is_not_redeclared_in_values(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = Path(tmp)
+            (apk / "res/values").mkdir(parents=True)
+            (apk / "res/color-night").mkdir(parents=True)
+            (apk / "res/values/colors.xml").write_text(
+                '<resources><color name="notification_shade_bg">#ff202020</color></resources>',
+                encoding="utf-8",
+            )
+            night = apk / "res/color-night/notification_shade_bg.xml"
+            night.write_text(
+                '<selector xmlns:android="http://schemas.android.com/apk/res/android">'
+                '<item android:color="#ff202020" /></selector>', encoding="utf-8",
+            )
+            pure_black.apply_systemui_dark_backgrounds(apk)
+            self.assertIn("#ff000000", night.read_text(encoding="utf-8"))
+            generated = apk / "res/values-night/colors.xml"
+            self.assertFalse(generated.exists())
+
+    def test_values_night_color_blocks_duplicate_file_overlay(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = Path(tmp)
+            (apk / "res/values-night").mkdir(parents=True)
+            (apk / "res/color").mkdir(parents=True)
+            night = apk / "res/values-night/colors.xml"
+            night.write_text(
+                '<resources><color name="notification_shade_bg">#ff202020</color></resources>',
+                encoding="utf-8",
+            )
+            (apk / "res/color/notification_shade_bg.xml").write_text(
+                '<selector xmlns:android="http://schemas.android.com/apk/res/android">'
+                '<item android:color="#ff202020" /></selector>', encoding="utf-8",
+            )
+            pure_black.apply_systemui_dark_backgrounds(apk)
+            self.assertIn("#ff000000", night.read_text(encoding="utf-8"))
+            self.assertFalse((apk / "res/color-night/notification_shade_bg.xml").exists())
+
     def test_night_only_drawable_shape_override(self):
         with tempfile.TemporaryDirectory() as tmp:
             apk = Path(tmp)
@@ -227,6 +308,30 @@ class OneUI9QSTests(unittest.TestCase):
 
 
 class MultiWindowTests(unittest.TestCase):
+    def test_large_method_uses_encodable_parameter_instructions(self):
+        original = (
+            '.method public setMultiWindowEnabled(Ljava/lang/String;Z)V\n'
+            '    .locals 20\n    return-void\n.end method\n'
+        )
+        changed, applied = ssrm.patch_text(original)
+        self.assertTrue(applied)
+        self.assertIn('move-object/from16 v1, p1', changed)
+        self.assertIn('invoke-virtual {v0, v1}', changed)
+        self.assertIn('const/16 p2, 0x1', changed)
+
+    def test_parameter_annotations_finish_before_injected_bytecode(self):
+        original = (
+            '.method public setMultiWindowEnabled(Ljava/lang/String;Z)V\n'
+            '    .locals 1\n'
+            '    .param p1, "requester"\n'
+            '        .annotation runtime Ljava/lang/Deprecated;\n'
+            '        .end annotation\n'
+            '    .end param\n'
+            '    return-void\n.end method\n'
+        )
+        changed, applied = ssrm.patch_text(original)
+        self.assertTrue(applied)
+        self.assertLess(changed.index('.end param'), changed.index('const-string v0, "SSRM"'))
     SAMPLE = (
         ".class public Lcom/samsung/android/app/SemMultiWindowManager;\n"
         ".super Ljava/lang/Object;\n"

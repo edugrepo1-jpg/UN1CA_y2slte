@@ -3,7 +3,8 @@
 
 The One UI 9 EZJ1 SystemUI resource map is not the DZG1 map: in particular
 sec_qs_background need not exist in values-night/colors.xml. Resolve resource
-candidates by *semantic name + opaque dark literal*, across Samsung values,
+candidates by *semantic name + opaque dark literal*, plus the exact primary
+detail surfaces verified in the EZJ1 inventory, across Samsung values,
 color-state XML and shape-drawable XML, while editing only night-qualified
 resources. Never change light-mode colors, text, tile accents, dim/scrims,
 wallpaper effects, or kernel/panel behavior.
@@ -60,6 +61,20 @@ ALWAYS_ALLOWED = {
     "qs_panel_background_color", "qs_background_primary",
     "notification_shade_background_color", "qs_panel_bg",
 }
+# Exact primary surfaces observed in the EZJ1 donor artifact. They use light
+# translucent defaults even though qs_detail_background_color aliases them.
+# Give these surfaces opaque black *only at night*, while preserving every
+# day resource, shade animation alpha and translucent icon/tile/scrim color.
+PRIMARY_SURFACES = {
+    "sec_qs_detail_bg_color", "sec_qs_detailed_container_background",
+}
+
+
+def night_files(res: Path, resource_type: str) -> list[Path]:
+    # Android qualifier order allows values-land-night and drawable-sw600dp-
+    # night, not just values-night-vNN. Match the qualifier token itself.
+    return sorted(p for p in res.glob(f"{resource_type}*/*.xml")
+                  if p.is_file() and "night" in p.parent.name.split("-")[1:])
 
 
 def is_target(name: str) -> bool:
@@ -84,10 +99,17 @@ def is_opaque_near_black(value: str) -> bool:
     return all(int(h[i:i + 2], 16) <= 96 for i in (0, 2, 4))
 
 
+def is_surface_color(name: str, value: str) -> bool:
+    if is_opaque_near_black(value):
+        return True
+    return (name.lower() in PRIMARY_SURFACES and HEX.fullmatch(value) is not None
+            and (len(value) == 7 or int(value[1:3], 16) != 0))
+
+
 def replace_color_tags(content: str, matched: set[str]) -> str:
     def change(match: re.Match[str]) -> str:
         name = match.group("name")
-        if not is_target(name) or not is_opaque_near_black(match.group("value")):
+        if not is_target(name) or not is_surface_color(name, match.group("value")):
             return match.group(0)
         matched.add(name)
         return match.group(1) + "#ff000000" + match.group(4)
@@ -113,7 +135,7 @@ def replace_flat_color_attr(content: str, matched: set[str], name: str) -> str:
     # Don't rewrite arbitrary stateful selectors or gradient layers: one
     # opaque color controls the entire matching XML resource.
     attrs = list(ATTR_COLOR.finditer(content))
-    if len(attrs) != 1 or not is_opaque_near_black(attrs[0].group("value")):
+    if len(attrs) != 1 or not is_surface_color(name, attrs[0].group("value")):
         return content
     match = attrs[0]
     matched.add(name)
@@ -125,7 +147,7 @@ def collect_base_colors(res: Path, inventory: list[str]) -> dict[str, str]:
     collected: dict[str, str] = {}
     conflicts: set[str] = set()
     for p in sorted(res.glob("values*/*.xml")):
-        if p.parent.name.startswith("values-night"):
+        if "night" in p.parent.name.split("-")[1:]:
             continue
         try:
             source = p.read_text(encoding="utf-8")
@@ -136,7 +158,7 @@ def collect_base_colors(res: Path, inventory: list[str]) -> dict[str, str]:
             if not is_target(name):
                 continue
             inventory.append(f"{p.relative_to(res)} | {name} = {value}")
-            is_opaque = is_opaque_near_black(value)
+            is_opaque = is_surface_color(name, value)
             is_safe_ref = value.startswith(("@", "?")) and not any(
                 bad in value.lower() for bad in (
                     "transparent", "scrim", "dim", "alpha", "gradient", "ripple"
@@ -169,11 +191,14 @@ def add_night_overrides(res: Path, candidates: dict[str, str],
     # Re-declaring one resource in the same values-night qualifier would
     # cause aapt2 duplicate-resource failures.
     defined_at_night: set[str] = set()
-    for existing in sorted(res.glob("values-night*/*.xml")):
+    for existing in night_files(res, "values"):
         source = existing.read_text(encoding="utf-8")
         defined_at_night.update(
             re.findall(r'<color\b[^>]*\bname="([^"]+)"', source)
         )
+    # File-based color selectors share the same resource namespace as
+    # <color> entries. Adding both in one qualifier breaks aapt2.
+    defined_at_night.update(p.stem for p in night_files(res, "color"))
     added = sorted(set(candidates) - defined_at_night)
     if not added:
         return
@@ -183,7 +208,7 @@ def add_night_overrides(res: Path, candidates: dict[str, str],
     content = original.replace("</resources>", block + "</resources>", 1)
     target.write_text(content, encoding="utf-8")
     matched.update(added)
-    changes[str(target.relative_to(res.parent))] = len(added)
+    changes[target.relative_to(res.parent).as_posix()] = len(added)
 
 
 def apply_systemui_dark_backgrounds(apk_root: Path,
@@ -198,8 +223,7 @@ def apply_systemui_dark_backgrounds(apk_root: Path,
     base_colors = collect_base_colors(res, inventory)
 
     # Android / Samsung use both values-night and values-night-vNN.
-    night_values = sorted(p for p in res.glob("values-night*/*.xml")
-                          if p.is_file())
+    night_values = night_files(res, "values")
     for file in night_values:
         original = file.read_text(encoding="utf-8")
         names: set[str] = set()
@@ -210,21 +234,21 @@ def apply_systemui_dark_backgrounds(apk_root: Path,
                 for name in sorted(names)
             )
             matched.update(names)
-            changes[str(file.relative_to(apk_root))] = len(names)
+            changes[file.relative_to(apk_root).as_posix()] = len(names)
         if updated != original:
             file.write_text(updated, encoding="utf-8")
 
     # In APKTool, a color can also be a file-based selector in color-night.
     # A solid/drawable night background may be XML instead of a color entry.
-    for folder in ("color-night*", "drawable-night*"):
-        for file in sorted(p for p in res.glob(f"{folder}/*.xml") if p.is_file()):
+    for folder in ("color", "drawable"):
+        for file in night_files(res, folder):
             original = file.read_text(encoding="utf-8")
             names: set[str] = set()
             updated = replace_flat_color_attr(original, names, file.stem)
             if names:
                 matched.update(names)
                 inventory.append(f"{file.relative_to(res)} | {file.stem} = night XML")
-                changes[str(file.relative_to(apk_root))] = len(names)
+                changes[file.relative_to(apk_root).as_posix()] = len(names)
             if original != updated:
                 file.write_text(updated, encoding="utf-8")
 
@@ -246,15 +270,19 @@ def apply_systemui_dark_backgrounds(apk_root: Path,
                 continue
             target = night_root / file.name
             # A donor-supplied specific night file is authoritative.
-            if any(p.is_file() for p in res.glob(
-                f"{folder}-night*/{file.name}"
-            )):
+            if any(p.name == file.name for p in night_files(res, folder)):
+                continue
+            if folder == "color" and any(
+                re.search(r'<color\b[^>]*\bname="' + re.escape(file.stem) + r'"',
+                          table.read_text(encoding="utf-8"))
+                for table in night_files(res, "values")
+            ):
                 continue
             night_root.mkdir(parents=True, exist_ok=True)
             target.write_text(updated, encoding="utf-8")
             matched.add(file.stem)
             inventory.append(f"{file.relative_to(res)} -> {target.relative_to(res)}")
-            changes[str(target.relative_to(apk_root))] = 1
+            changes[target.relative_to(apk_root).as_posix()] = 1
 
     if report_path is not None:
         report_path.parent.mkdir(parents=True, exist_ok=True)

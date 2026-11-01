@@ -42,7 +42,7 @@ R8S_MATCH_HDR_NODES()
     local RESULT
     RESULT="$(IFS=','; printf '%s' "${UPDATED[*]}")"
     if [[ "$RESULT" != "$VALUE" ]]; then
-        LOG "- Matching r8s LLHDR/MFHDR nodes to the patched Android 16 camera"
+        LOG "- Matching r8s LLHDR/MFHDR nodes to the verified native camera classes"
         SET_FLOATING_FEATURE_CONFIG "$FEATURE" "$RESULT" || return 1
     fi
 }
