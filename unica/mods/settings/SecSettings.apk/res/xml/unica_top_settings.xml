@@ -5,6 +5,8 @@
     <com.samsung.android.settings.widget.SecInsetCategoryPreference />
     <Preference android:title="@string/unica_rom_version_title" android:key="unica_rom_version" android:summary="@string/summary_placeholder" settings:controller="io.mesalabs.unica.settings.ROMVersionPreferenceController" />
     <Preference android:title="@string/unica_device_name_title" android:key="unica_device_name" android:summary="@string/summary_placeholder" settings:controller="io.mesalabs.unica.settings.DeviceNamePreferenceController" />
+    <Preference android:title="@string/gm_hub_maintainer_title" android:summary="@string/gm_hub_maintainer_name" android:key="gm_hub_maintainer" android:selectable="false" />
+    <Preference android:title="@string/gm_hub_kernel_title" android:summary="@string/gm_hub_kernel_name" android:key="gm_hub_kernel" android:selectable="false" />
     <com.samsung.android.settings.widget.SecInsetCategoryPreference />
     <PreferenceCategory android:title="@string/gm_hub_category_paradox" />
     <Preference android:icon="@drawable/sec_ic_settings_smart_manager" android:title="@string/gm_hub_paradox_tweaks" android:key="gm_hub_paradox_tweaks" android:fragment="com.paradox.hub.ParadoxCenterFragment" />

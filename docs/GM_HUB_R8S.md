@@ -1,4 +1,4 @@
-# GM Hub: Artisan + Paradox + UN1CA (SM-G780F / r8s)
+# GM HUB: GMNevz / GMKernel (SM-G780F / r8s)
 
 > **Development port only.** These components are installed into the **existing Samsung SecSettings** APK on the **One UI 8.5 / Android 16 (API 36)** donor `S926BXXSGDZG1`. This is **not One UI 9**.
 >
@@ -6,7 +6,7 @@
 
 ## Architecture
 
-One top-level Samsung **GM Hub - Artisan + Paradox** screen. No second or third control center APK is installed.
+One top-level Samsung **GM HUB** screen. No second or third control center APK is installed.
 
 - UN1CA / Artisan existing `io.mesalabs.unica.settings` fragments are preserved (UI, privacy/spoof, extra settings, Artisan information).
 - Paradox source `com.paradox.hub` Smali classes are imported from the owner's `edugrepo1-jpg/ParadoxUI:sixteenQPR2`, with changes only for r8s compatibility.
@@ -73,3 +73,10 @@ One top-level Samsung **GM Hub - Artisan + Paradox** screen. No second or third 
 - Draft PR: https://github.com/edugrepo1-jpg/UN1CA_y2slte/pull/1
 - Static check: `python3 -m unittest discover -s tests -p 'test_r8s*.py' -v`
 - Real ROM build: GitHub Actions > Build > branch > `compile` (no publishing).
+
+## Branding do fork
+- Nome público: **GM HUB**
+- Mantenedor: **GMNevz** (GitHub: edugrepo1-jpg)
+- Kernel Linux / uname: **GMKernel** (CONFIG_LOCALVERSION=-GMKernel no nosso fork)
+- Propriedades adicionais: ro.gmhub.name / ro.gmhub.maintainer / ro.gmhub.kernel. Não substituir `ro.unica` nem nomes de classes originais de terceiros.
+- A migração One UI 9 está sujeita à aprovação explícita e não faz parte desta branch.
