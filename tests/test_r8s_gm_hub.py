@@ -18,7 +18,7 @@ ANDROID = "{http://schemas.android.com/apk/res/android}"
 class GMHubSourceContracts(unittest.TestCase):
     def test_one_hub_entry_preserves_artisan_unica_features(self):
         root = ET.parse(XML / "unica_top_settings.xml").getroot()
-        self.assertIn("GM Hub", ET.parse(VALUES / "strings.xml").getroot().find(
+        self.assertIn("GM HUB", ET.parse(VALUES / "strings.xml").getroot().find(
             "./string[@name='unica_settings_title']").text)
         fragments = [e.get(ANDROID + "fragment", "") for e in root.iter()]
         for fragment in (
@@ -35,6 +35,28 @@ class GMHubSourceContracts(unittest.TestCase):
         # Do not present potentially destructive or uncalibrated screens.
         self.assertNotIn("com.paradox.hub.ParadoxAppManagerFragment", fragments)
         self.assertNotIn("com.paradox.hub.ParadoxThermalFragment", fragments)
+
+    def test_branding_and_original_credits(self):
+        strings = ET.parse(VALUES / "strings.xml").getroot()
+        lookup = {e.get("name"): e.text for e in strings if e.tag == "string"}
+        self.assertEqual(lookup["unica_settings_title"], "GM HUB")
+        self.assertEqual(lookup["gm_hub_maintainer_name"], "GMNevz")
+        self.assertEqual(lookup["gm_hub_kernel_name"], "GMKernel")
+        self.assertEqual(lookup["unica_about_artisanrom_title"], "Sobre o GM HUB")
+        top = ET.parse(XML / "unica_top_settings.xml").getroot()
+        keys = {e.get(ANDROID + "key") for e in top.iter()}
+        self.assertIn("gm_hub_maintainer", keys)
+        self.assertIn("gm_hub_kernel", keys)
+        credits = ET.parse(VALUES / "artisanrom.xml").getroot()
+        people = {e.get("name"): e.text for e in credits if e.tag == "string"}
+        self.assertEqual(people["maintainer_23_name"], "GMNevz")
+        self.assertEqual(people["maintainer_23_role"].split(" ")[0], "Mantenedor")
+        self.assertEqual(people["maintainer_1_name"], "Android Artisan")
+        self.assertIn("UN1CA", people["artisanrom_about_description"])
+        props = (ROOT / "target/r8s/patches/hardware_compat/system.prop").read_text(encoding="utf-8")
+        self.assertIn("ro.gmhub.name=GM HUB", props)
+        self.assertIn("ro.gmhub.maintainer=GMNevz", props)
+        self.assertIn("ro.gmhub.kernel=GMKernel", props)
 
     def test_resource_names_do_not_conflict(self):
         names = []
