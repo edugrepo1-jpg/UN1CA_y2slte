@@ -11,8 +11,6 @@ on:
           - test
           - release
         default: debug
-    branches:
-      - 'sixteen'
 
 permissions:
   contents: write
@@ -28,7 +26,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [c2s, c1s, x1s, y2slte, y2s, z3s, r8s]
+        # Only the r8s port is under development in this fork.
+        target: [r8s]
 
     steps:
       - name: Checkout repo
