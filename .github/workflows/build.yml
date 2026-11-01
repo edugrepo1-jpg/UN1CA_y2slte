@@ -199,6 +199,9 @@ jobs:
             out/target/r8s/*.log
             out/*.log
             out/target/r8s/tmp/*.log
+            out/gmhub-oneui9-pure-black-resources.txt
+            out/target/r8s/gmhub-oneui9-pure-black-resources.txt
+            out/gmhub-*.txt
 
       - name: Upload to Pixeldrain, GitHub Release, Split, XML
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.build_type != 'compile'
