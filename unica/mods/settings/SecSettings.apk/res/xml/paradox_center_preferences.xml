@@ -4,7 +4,5 @@
     <androidx.preference.ListPreference android:icon="@drawable/sec_ic_settings_display" android:entries="@array/paradox_refresh_rates" android:title="@string/paradox_min_refresh" android:key="min_refresh_rate" android:entryValues="@array/paradox_refresh_rates" />
     <androidx.preference.ListPreference android:icon="@drawable/sec_ic_settings_display" android:entries="@array/paradox_refresh_rates" android:title="@string/paradox_max_refresh" android:key="max_refresh_rate" android:entryValues="@array/paradox_refresh_rates" />
     <Preference android:icon="@drawable/sec_ic_settings_software_update" android:title="@string/paradox_reset_refresh" android:key="reset_refresh_rate" />
-    <androidx.preference.SwitchPreferenceCompat android:icon="@drawable/sec_ic_settings_accessibility" android:title="@string/paradox_audio_dac" android:key="paradox_audio_dac" />
     <androidx.preference.SwitchPreferenceCompat android:icon="@drawable/sec_ic_settings_display" android:title="@string/paradox_touch_overdrive" android:key="paradox_touch_overdrive" />
-    <androidx.preference.SwitchPreferenceCompat android:icon="@drawable/sec_ic_settings_advanced_feature" android:title="@string/paradox_anti_tracking" android:key="paradox_anti_tracking" />
 </PreferenceScreen>
