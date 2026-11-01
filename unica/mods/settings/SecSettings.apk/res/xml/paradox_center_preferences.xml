@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen android:title="@string/paradox_center_title"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <androidx.preference.ListPreference android:icon="@drawable/sec_ic_settings_display" android:entries="@array/paradox_refresh_rates" android:title="@string/paradox_min_refresh" android:key="min_refresh_rate" android:entryValues="@array/paradox_refresh_rates" />
+    <androidx.preference.ListPreference android:icon="@drawable/sec_ic_settings_display" android:entries="@array/paradox_refresh_rates" android:title="@string/paradox_max_refresh" android:key="max_refresh_rate" android:entryValues="@array/paradox_refresh_rates" />
+    <Preference android:icon="@drawable/sec_ic_settings_software_update" android:title="@string/paradox_reset_refresh" android:key="reset_refresh_rate" />
+    <androidx.preference.SwitchPreferenceCompat android:icon="@drawable/sec_ic_settings_display" android:title="@string/paradox_touch_overdrive" android:key="paradox_touch_overdrive" />
+</PreferenceScreen>

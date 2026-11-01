@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen android:title="@string/paradox_cat_battery"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <Preference android:icon="@drawable/sec_ic_settings_smart_manager" android:title="@string/paradox_bat_current" android:key="bat_current" android:summary="-- mA" />
+    <Preference android:icon="@drawable/sec_ic_settings_battery" android:title="@string/paradox_bat_capacity" android:key="bat_capacity" android:summary="-- mAh" />
+    <Preference android:icon="@drawable/sec_ic_settings_software_update" android:title="@string/paradox_bat_cycles" android:key="bat_cycles" android:summary="--" />
+    <Preference android:icon="@drawable/sec_ic_settings_accessibility" android:title="@string/paradox_bat_health" android:key="bat_health" android:summary="--%" />
+</PreferenceScreen>
