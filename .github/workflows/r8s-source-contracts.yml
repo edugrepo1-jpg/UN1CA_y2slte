@@ -19,4 +19,4 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
       - name: Validate r8s source contracts, shell syntax and camera XML
-        run: python3 -m unittest discover -s tests -p 'test_r8s_unica_contracts.py' -v
+        run: python3 -m unittest discover -s tests -p 'test_r8s*.py' -v
