@@ -29,10 +29,14 @@ TARGET_CLASS = "com/samsung/android/app/SemMultiWindowManager.smali"
 def patch_text(text: str) -> tuple[str, bool]:
     matches = list(METHOD.finditer(text))
     if len(matches) != 1:
+        near = re.findall(
+            r"(?m)^\\.method[^\\n]*setMultiWindowEnabled[^\\n]*$",
+            text
+        )
         raise ValueError(
-            f"DZG1 must expose exactly one {TARGET_CLASS}."
+            f"EZJ1 needs one {TARGET_CLASS}."
             "setMultiWindowEnabled(Ljava/lang/String;Z)V; found "
-            f"{len(matches)}"
+            f"{len(matches)}. Related method descriptors: {near[:8]}"
         )
     method = matches[0]
     if re.search(r"\b(static|native|abstract)\b", method.group("attrs") or ""):
@@ -43,7 +47,7 @@ def patch_text(text: str) -> tuple[str, bool]:
 
     local = LOCALS.search(body)
     if local is None or len(LOCALS.findall(body)) != 1:
-        raise ValueError("Expected one .locals directive in DZG1 SemMultiWindowManager")
+        raise ValueError("Expected one .locals directive in EZJ1 SemMultiWindowManager")
     locals_count = int(local.group(2))
     if locals_count == 0 and re.search(r"\bv\d+\b", body):
         raise ValueError("Zero-locals method uses v aliases; unsafe to increase registers")
@@ -84,7 +88,7 @@ def patch_text(text: str) -> tuple[str, bool]:
             break
         position = eol
     if in_annotation:
-        raise ValueError("Unterminated Smali annotation in DZG1 multi-window method")
+        raise ValueError("Unterminated Smali annotation in EZJ1 multi-window method")
     body = body[:position] + injection + body[position:]
     return text[:method.start("body")] + body + text[method.end("body"):], True
 
@@ -92,7 +96,14 @@ def patch_text(text: str) -> tuple[str, bool]:
 def patch_tree(root: Path) -> bool:
     matches = sorted(root.rglob(TARGET_CLASS))
     if len(matches) != 1:
-        raise ValueError(f"DZG1 framework must have one {TARGET_CLASS}; found {len(matches)}")
+        nearby = sorted(
+            str(p.relative_to(root))
+            for p in root.rglob("*MultiWindowManager*.smali")
+        )[:15]
+        raise ValueError(
+            f"EZJ1 framework must contain one {TARGET_CLASS}; found "
+            f"{len(matches)}. Candidate classes: {nearby}"
+        )
     path = matches[0]
     original = path.read_text(encoding="utf-8")
     updated, changed = patch_text(original)
