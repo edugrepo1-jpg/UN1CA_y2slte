@@ -1,3 +1,15 @@
+# GM HUB — One UI 9 (Android 17)
+
+**Mantenedor:** GMNevz · **Kernel:** GMKernel · **Alvo:** Samsung Galaxy S20 FE 4G Exynos SM-G780F (`r8s`)
+
+Esta branch é um port de desenvolvimento da UN1CA 5.0.0 Akita para a One UI 9 com firmware doador SM-S926B `S926BXXSIEZJ1`, kernel `gmkernel-android17-r8s-20261101` e recursos GM HUB/Artisan/Paradox. **Não há confirmação de boot ou funcionamento completo em hardware real.** Não utilizar como release de uso diário.
+
+**Matriz técnica e critérios de boot:** [docs/GMHUB_ONEUI9_BOOT_AUDIT.md](docs/GMHUB_ONEUI9_BOOT_AUDIT.md)
+
+Os créditos, copyrights, licenças e marcas dos autores originais continuam aplicáveis. A documentação original segue abaixo.
+
+---
+
 <h1 align="center">
   <img loading="lazy" src="readme-res/banner.png"/>
 </h1>
