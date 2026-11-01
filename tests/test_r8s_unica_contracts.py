@@ -39,7 +39,7 @@ class R8sSourceContracts(unittest.TestCase):
         self.assertIn("edugrepo1-jpg/android_kernel_samsung_exynos990.git", script)
         self.assertIn('R8S_GM_KERNEL_BRANCH="r8s-unica-full-20261101"', script)
         self.assertRegex(script, r'R8S_GM_KERNEL_SHA="[a-f0-9]{40}"')
-        self.assertIn('R8S_GM_KERNEL_SHA="fa5d1658e79b441e42073f874a6f81aee0b65459"', script)
+        self.assertIn('R8S_GM_KERNEL_SHA="b1d26ec2d933696f5d3ec25fa02965456d50ac1d"', script)
         self.assertIn("./build.sh -m r8s -k y -r n", script)
         self.assertIn("61865984", script)
         self.assertIn("0xD7B7AB1E", script)
