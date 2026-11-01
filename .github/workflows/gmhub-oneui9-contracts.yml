@@ -16,7 +16,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate Android 17 donor, GMKernel, r8s geometry and workflow
-        run: python3 -m unittest discover -s tests -p 'test_gmhub_oneui9*.py' -v
+        run: |
+          python3 -m unittest discover -s tests -p 'test_gmhub_oneui9*.py' -v
+          python3 -m unittest discover -s tests -p 'test_r8s_gm_hub.py' -v
+          python3 -m unittest discover -s tests -p 'test_r8s_ui_features.py' -v
       - name: Validate already-integrated Android 17 kernel ABI in pinned GMKernel
         run: |
           set -euo pipefail
