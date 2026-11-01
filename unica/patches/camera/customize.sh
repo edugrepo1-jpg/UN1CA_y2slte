@@ -42,6 +42,10 @@ else
     _LOG "File not found: $SRC_DIR/target/$TARGET_CODENAME/camera/camera-feature.xml"
 fi
 
+# Apply only the source-independent r8s portrait enum normalization.
+# Keep the UN1CA camera HAL and its existing Android 16 video compatibility fixes.
+. "$MODPATH/r8s_modes.sh" || return 1
+
 LOG_STEP_IN
 if grep -q "DURING_SMARTVIEW" "$WORK_DIR/system/system/cameradata/camera-feature.xml" 2> /dev/null; then
     LOG "- Removing Smart View limitations flags"
