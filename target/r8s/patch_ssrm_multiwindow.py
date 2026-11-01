@@ -70,7 +70,7 @@ def patch_text(text: str) -> tuple[str, bool]:
     position = local.end()
     in_annotation = False
     while position < len(body):
-        eol = body.find("\\n", position)
+        eol = body.find("\n", position)
         eol = len(body) if eol < 0 else eol + 1
         line = body[position:eol].strip()
         if line.startswith(".annotation"):
