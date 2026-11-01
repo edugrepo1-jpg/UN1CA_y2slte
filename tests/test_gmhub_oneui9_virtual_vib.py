@@ -59,15 +59,15 @@ class VirtualVibCompatibilityTests(unittest.TestCase):
             helper_path.parent.mkdir(parents=True)
             if helper:
                 helper_path.write_text(
-                    ".class public Lcom/android/server/vibrator/VirtualVibSoundHelper;\\n"
+                    ".class public Lcom/android/server/vibrator/VirtualVibSoundHelper;\n"
                     + (
                         ".method public playVirtualSoundIfNeeded("
-                        "Ljava/lang/String;Landroid/os/VibrationAttributes;Z)V\\n"
-                        ".end method\\n"
-                        ".method public stopVirtualSound(Ljava/lang/String;)V\\n"
-                        ".end method\\n"
+                        "Ljava/lang/String;Landroid/os/VibrationAttributes;Z)V\n"
+                        ".end method\n"
+                        ".method public stopVirtualSound(Ljava/lang/String;)V\n"
+                        ".end method\n"
                         if methods else
-                        ".method public changedAudioMethod()V\\n.end method\\n"
+                        ".method public changedAudioMethod()V\n.end method\n"
                     ),
                     encoding="utf-8",
                 )
@@ -77,20 +77,20 @@ class VirtualVibCompatibilityTests(unittest.TestCase):
             )
             settings.mkdir(parents=True)
             (settings / "VirtualVibrationSoundPreferenceController.smali").write_text(
-                ".method public getAvailabilityStatus()I\\n.end method\\n",
+                ".method public getAvailabilityStatus()I\n.end method\n",
                 encoding="utf-8",
             )
             # The two helpers call simulated SMALI_PATCH methods. Test the
             # dispatch contract without modifying any actual donor files.
             bash = (
-                "set -euo pipefail\\n"
-                f"APKTOOL_DIR={str(root)!r}\\n"
-                "DECODE_APK() { return 0; }\\n"
-                "LOG() { :; }\\n"
-                "LOGE() { echo \"LOGE:$*\" >&2; }\\n"
-                "ABORT() { echo \"ABORT:$*\" >&2; exit 95; }\\n"
-                "SMALI_PATCH() { printf '%s|%s|%s\\n' \"$3\" \"$4\" \"$5\"; }\\n"
-                f"source {str(SHELL)!r}\\n"
+                "set -euo pipefail\n"
+                f"APKTOOL_DIR={str(root)!r}\n"
+                "DECODE_APK() { return 0; }\n"
+                "LOG() { :; }\n"
+                "LOGE() { echo \"LOGE:$*\" >&2; }\n"
+                "ABORT() { echo \"ABORT:$*\" >&2; exit 95; }\n"
+                "SMALI_PATCH() { printf '%s|%s|%s\n' \"$3\" \"$4\" \"$5\"; }\n"
+                f"source {str(SHELL)!r}\n"
             )
             return subprocess.run(
                 ["bash", "-c", bash], text=True, capture_output=True
