@@ -181,6 +181,23 @@ class PureBlackTests(unittest.TestCase):
 
 
 class OneUI9QSTests(unittest.TestCase):
+    def test_android17_qs_method_layout_divergence_fails_safe(self):
+        """Do not break API37 SystemUI when diagnostic method layout changed."""
+        original = (
+            ".class public Lcom/android/systemui/qs/animator/QSAnimView;\n"
+            ".super Ljava/lang/Object;\n"
+            ".method public setAlpha(F)V\n"
+            "    .locals 5\n"
+            "    invoke-static {}, Landroid/os/Debug;->getCallers()Ljava/lang/String;\n"
+            "    return-void\n"
+            ".end method\n"
+            ".method public setVisibility(I)V\n"
+            "    .locals 5\n"
+            "    return-void\n"
+            ".end method\n"
+        )
+        self.assertEqual(qs_anim.optimize(original), original)
+
     def test_new_systemui_without_debug_callers_is_not_modified(self):
         source = (
             ".class public Lcom/android/systemui/qs/animator/QSAnimView;\n"
