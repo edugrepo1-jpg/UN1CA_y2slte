@@ -68,7 +68,10 @@ def main() -> None:
     if after != before:
         path.write_text(after, encoding="utf-8", newline="\n")
     if after == before:
-        print("GM HUB: QSAnimView does not contain legacy caller tracing or is already patched")
+        if "Landroid/os/Debug;->getCallers" in before and ":r8s_apply_visual" not in before:
+            print("GM HUB: One UI 9 QSAnimView has a different register/visual contract; leaving it unchanged to protect SystemUI")
+        else:
+            print("GM HUB: QSAnimView has no applicable legacy caller tracing or is already patched")
     else:
         print("GM HUB: QS caller diagnostics are opt-in; enable with log.tag.QSAnimView=DEBUG")
 
