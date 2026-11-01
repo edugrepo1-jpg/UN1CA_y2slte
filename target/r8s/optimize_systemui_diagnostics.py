@@ -18,6 +18,7 @@ GATE = '''
 
 
 def optimize(text: str) -> str:
+    original = text
     # Modern One UI 9 builds may no longer invoke expensive legacy Debug
     # caller tracing from QSAnimView. There is nothing to optimize in that case.
     if "Landroid/os/Debug;->getCallers" not in text:
@@ -30,12 +31,19 @@ def optimize(text: str) -> str:
         pattern = r"(?ms)^\.method public " + re.escape(signature) + r"\n.*?^\.end method"
         match = re.search(pattern, text)
         if not match:
-            raise ValueError(f"Missing expected QS method {signature}")
+            # One UI 9 can rename/restructure these methods while retaining
+            # QSAnimView; this diagnostic-only optimization is not required
+            # for boot. Never mutate a method with an unknown API37 layout.
+            return original
         body = match[0]
         if (body.count("    .locals 3") != 1 or body.count(VISUAL) != 1
                 or body.count("Landroid/os/Debug;->getCallers") != 1
                 or body.count(f"{CLASS}->addState(") != 1):
-            raise ValueError(f"Changed QS method contract: {signature}")
+            # The donor changed its registers/visual flow; silently editing
+            # the old anchors could break SystemUI verification or the QS.
+            # Preserve the complete original class, even if an earlier
+            # method was tentatively optimized during this same invocation.
+            return original
         insertion = body.index("    .locals 3") + len("    .locals 3")
         changed = body[:insertion] + GATE + body[insertion:]
         changed = changed.replace(VISUAL, "    :r8s_apply_visual\n" + VISUAL, 1)
