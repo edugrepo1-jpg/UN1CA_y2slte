@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Only loaded for SM-G780F / r8s. Other Exynos 990 targets retain Extreme Kernel.
 #
-# Full, user-owned GM kernel branch derived from r8s-chargemax-current-thermal-20261031.
+# Full, user-owned GMKernel branch derived from r8s-chargemax-current-thermal-20261031.
 # Includes our Charge Max V3 default ON, higher r8s charging current and thermal
 # thresholds, r8s DT revisions, EA8079 96 Hz and the Clang bootstrap repair.
 # IMPORTANT: threshold increases require physical thermal/charging validation.
 R8S_GM_KERNEL_REPO="https://github.com/edugrepo1-jpg/android_kernel_samsung_exynos990.git"
 R8S_GM_KERNEL_BRANCH="r8s-unica-full-20261101"
-R8S_GM_KERNEL_SHA="fa5d1658e79b441e42073f874a6f81aee0b65459"
+R8S_GM_KERNEL_SHA="b1d26ec2d933696f5d3ec25fa02965456d50ac1d"
 
 R8S_BUILD_OWN_KERNEL()
 {
