@@ -19,3 +19,13 @@ dark resources, night-only aliases/overlays, validation of resource uniqueness,
 and recorded map in build artifacts.
 Preflight now includes GM HUB, pure-black, OneLab SSRM, and QS adaptation tests.
 No external ROM release / no OTA publishing. User GMNevz-owned GMKernel unchanged.
+
+Revision: diagnostic build 4, GM HUB One UI 9, 2026-11-01.
+Previous full run 41340161531 failed on the legacy QSAnimView.setAlpha(F)V
+contract, AFTER GMKernel/KSU, firmware, graphics, ART, Pure Black and SSRM
+passed. QS optimization now preserves unknown One UI 9 donor layouts.
+The one stale SSRM test expectation has been updated.
+Pure Black now excludes cover/subscreen, avatars and media imagery.
+Preflight validates all One UI9, GM HUB, Pure Black, OneLab SSRM and
+Python/shell source contracts before expensive ROM compilation.
+No OTA / no release; preserve diagnostic outputs.
