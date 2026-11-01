@@ -42,3 +42,16 @@
 
 **PR:** https://github.com/edugrepo1-jpg/UN1CA_y2slte/pull/2
 **Execução de build:** https://github.com/edugrepo1-jpg/UN1CA_y2slte/actions/runs/41332367125
+
+
+## Resultado real do build 41332867681 / correção da compatibilidade EZJ1
+
+**Comprovado no GitHub Actions:** download e extração do firmware, dependências, compilação GMKernel com KernelSU Next Legacy v3.4.0-legacy, verificação da Image empacotada e dos seletores do dtbo.img. O processo avançou até os patches de dispositivo e falhou ao aplicar Pure Black ao `SystemUI.apk`, pois o recurso `sec_qs_background` existia como pressuposto do Android 16, mas não na mesma tabela de recursos da One UI 9.
+
+**Adaptação implementada:** o algoritmo de Pure Black não depende mais exclusivamente desse nome; procura alvos semanticamente identificados nas variantes `values-night*`, `color-night*` e `drawable-night*` e cria substituições apenas para o modo escuro quando encontra backgrounds seguros em variantes de base. Preserva o tema diurno, os textos, os scrims semitransparentes e verifica duplicidade de recursos com o mesmo qualifier; registra a lista extraída em `out/gmhub-oneui9-pure-black-resources.txt` (ou na pasta de output correspondente). Se o layout real do doador não corresponder, para com diagnóstico em vez de declarar uma falsa correção.
+
+**Otimização QSAnimView:** se o Android 17 já removeu a chamada de diagnóstico pesada, o script não injeta Smali incompatível; registra que não há um recurso legado a otimizar.
+
+**Nova execução completa sem publicação:** https://github.com/edugrepo1-jpg/UN1CA_y2slte/actions/runs/41340161531
+
+**Não confirmado:** conclusão dessa execução, rebuild final de APK/JAR, Pure Black funcionando no aparelho, digital, câmera, conectividade, Charging Max, GM HUB e boot físico. O banner personalizado ainda aguarda inclusão real do arquivo de imagem no repositório; não usar referência XML a um asset ausente.
