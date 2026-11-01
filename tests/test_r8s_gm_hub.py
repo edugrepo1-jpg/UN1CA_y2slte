@@ -58,6 +58,19 @@ class GMHubSourceContracts(unittest.TestCase):
         self.assertIn("ro.gmhub.maintainer=GMNevz", props)
         self.assertIn("ro.gmhub.kernel=GMKernel", props)
 
+    def test_gm_hub_icons_are_bundled_and_not_donor_dependent(self):
+        home = ET.parse(XML / "unica_top_settings.xml").getroot()
+        for node in home.iter():
+            key = node.get(ANDROID + "key", "")
+            if not key.startswith("gm_hub_"):
+                continue
+            icon = node.get(ANDROID + "icon")
+            if not icon:
+                continue
+            self.assertTrue(icon.startswith("@drawable/ic_unica_settings_"))
+            expected = BASE / "res/drawable" / (icon.split("/")[-1] + ".xml")
+            self.assertTrue(expected.is_file(), str(expected))
+
     def test_resource_names_do_not_conflict(self):
         names = []
         for filename in ("paradox.xml", "strings.xml", "artisanrom.xml"):
