@@ -34,12 +34,12 @@ class R8sSourceContracts(unittest.TestCase):
         self.assertIn("SOURCE_USE_NATIVE_DISPLAY_STACK=true", conf)
         self.assertIn("SOURCE_USE_NATIVE_FINGERPRINT_UI=true", conf)
 
-    def test_kernel_fork_is_pinned_and_safe(self):
+    def test_full_gm_kernel_fork_is_pinned(self):
         script = source("platform/exynos990/patches/extremekrnl/r8s-own-kernel.sh")
         self.assertIn("edugrepo1-jpg/android_kernel_samsung_exynos990.git", script)
-        self.assertIn('R8S_GM_KERNEL_BRANCH="r8s-unica-safe-20261101"', script)
+        self.assertIn('R8S_GM_KERNEL_BRANCH="r8s-unica-full-20261101"', script)
         self.assertRegex(script, r'R8S_GM_KERNEL_SHA="[a-f0-9]{40}"')
-        self.assertNotIn('R8S_GM_KERNEL_BRANCH="r8s-chargemax-current-thermal-20261031"', script)
+        self.assertIn('R8S_GM_KERNEL_SHA="fa5d1658e79b441e42073f874a6f81aee0b65459"', script)
         self.assertIn("./build.sh -m r8s -k y -r n", script)
         self.assertIn("61865984", script)
         self.assertIn("0xD7B7AB1E", script)
