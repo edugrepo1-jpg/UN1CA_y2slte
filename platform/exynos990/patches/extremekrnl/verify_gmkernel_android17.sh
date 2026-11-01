@@ -16,7 +16,7 @@ require() {
 
 # Recursive memory.min/low cgroup2 semantics, including mount policy.
 require include/linux/cgroup-defs.h 'CGRP_ROOT_MEMORY_RECURSIVE_PROT'
-require kernel/cgroup/cgroup.c 'if (!strcmp(token, "memory_recursiveprot"))'
+require kernel/cgroup/cgroup.c 'strcmp(token, "memory_recursiveprot")'
 require kernel/cgroup/cgroup.c '"memory_recursiveprot'
 require mm/memcontrol.c 'CGRP_ROOT_MEMORY_RECURSIVE_PROT'
 require mm/memcontrol.c 'parent_effective - siblings_protected'
