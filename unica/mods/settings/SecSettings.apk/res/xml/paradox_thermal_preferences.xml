@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen android:title="@string/paradox_cpu_title"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <Preference android:icon="@drawable/sec_ic_settings_advanced_feature" android:title="@string/paradox_therm_a55" android:key="therm_a55" android:summary="-- °C" />
+    <Preference android:icon="@drawable/sec_ic_settings_advanced_feature" android:title="@string/paradox_therm_a78" android:key="therm_a78" android:summary="-- °C" />
+    <Preference android:icon="@drawable/sec_ic_settings_advanced_feature" android:title="@string/paradox_therm_x1" android:key="therm_x1" android:summary="-- °C" />
+    <Preference android:icon="@drawable/sec_ic_settings_display" android:title="@string/paradox_therm_gpu" android:key="therm_gpu" android:summary="-- °C" />
+</PreferenceScreen>

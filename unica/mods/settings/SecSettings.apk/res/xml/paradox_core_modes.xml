@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen android:title="@string/paradox_core_modes_title"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <androidx.preference.ListPreference android:icon="@drawable/sec_ic_settings_advanced_feature" android:entries="@array/paradox_core_mode_entries" android:title="@string/paradox_core_mode_title" android:key="paradox_core_mode" android:entryValues="@array/paradox_core_mode_values" />
+    <Preference android:icon="@drawable/sec_ic_settings_software_update" android:title="@string/paradox_core_restore_title" android:key="paradox_core_restore" />
+</PreferenceScreen>

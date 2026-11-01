@@ -1,3 +1,13 @@
+# GM HUB
+
+**Mantenedor:** GMNevz  |  **Kernel:** GMKernel  |  **Dispositivo:** Galaxy S20 FE 4G (SM-G780F / r8s)
+
+Este fork reúne recursos da UN1CA, ArtisanROM e ParadoxUI. A branch atual utiliza One UI 8.5 / Android 16. Uma migração para One UI 9 / Android 17 está **em análise e depende da aprovação do mantenedor**. O código ainda não possui validação de boot no dispositivo.
+
+O conteúdo original e os créditos dos projetos de origem são preservados abaixo.
+
+---
+
 <h1 align="center">
   <img loading="lazy" src="readme-res/banner.png"/>
 </h1>
