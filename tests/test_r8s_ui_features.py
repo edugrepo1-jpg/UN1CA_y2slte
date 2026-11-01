@@ -83,6 +83,28 @@ class PureBlackTests(unittest.TestCase):
             self.assertNotIn("panel_scrim", overlay)
             self.assertIn("quick_settings_panel_background", report.read_text())
 
+    def test_oneui9_reference_background_gets_dark_only_override(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = Path(tmp)
+            (apk / "res/values").mkdir(parents=True)
+            base = apk / "res/values/colors.xml"
+            original = (
+                '<resources>'
+                '<color name="sec_qs_panel_bg">@color/system_surface</color>'
+                '<color name="qs_panel_scrim">@color/system_scrim</color>'
+                '</resources>'
+            )
+            base.write_text(original, encoding="utf-8")
+            changes = pure_black.apply_systemui_dark_backgrounds(apk)
+            self.assertTrue(changes)
+            self.assertEqual(base.read_text(encoding="utf-8"), original)
+            overlay = (apk / "res/values-night/colors.xml").read_text(
+                encoding="utf-8")
+            self.assertIn(
+                '<color name="sec_qs_panel_bg">#ff000000</color>', overlay
+            )
+            self.assertNotIn("qs_panel_scrim", overlay)
+
     def test_oneui9_qualified_night_xml_is_patched_without_day_changes(self):
         with tempfile.TemporaryDirectory() as tmp:
             apk = Path(tmp)
