@@ -221,6 +221,15 @@ INIT_KERNEL_SUBMODULES()
 
 APPLY_KERNEL_PATCHES()
 {
+    if [[ "$TARGET_CODENAME" == "r8s" ]]; then
+        # GMKernel already carries the Android 17 cgroup and capability ABI.
+        # These Extreme-specific patches have different contexts; applying
+        # them twice fails and can corrupt the kernel source. Verify behavior.
+        bash "$SRC_DIR/platform/exynos990/patches/extremekrnl/verify_gmkernel_android17.sh" \
+            "$KERNEL_TMP_DIR" || ABORT "GMKernel is missing Android 17 required cgroup or capability ABI"
+        LOG "- GMKernel already contains the Android 17 kernel ABI backports"
+        return 0
+    fi
     local PATCH
     local PATCHES=("$KERNEL_PATCH_DIR"/*.patch)
 

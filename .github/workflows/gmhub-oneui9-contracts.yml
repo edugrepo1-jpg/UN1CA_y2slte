@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate Android 17 donor, GMKernel, r8s geometry and workflow
         run: python3 -m unittest discover -s tests -p 'test_gmhub_oneui9*.py' -v
-      - name: Check Android 17 kernel compatibility patches against our GMKernel
+      - name: Validate already-integrated Android 17 kernel ABI in pinned GMKernel
         run: |
           set -euo pipefail
           GM_REPO=https://github.com/edugrepo1-jpg/android_kernel_samsung_exynos990.git
@@ -25,9 +25,6 @@ jobs:
           GM_SHA=521d4e09a29288cc40afd2318be6ce52b3c5726f
           git clone --depth 1 --single-branch --branch "$GM_BRANCH" "$GM_REPO" "$RUNNER_TEMP/gmkernel-check"
           test "$(git -C "$RUNNER_TEMP/gmkernel-check" rev-parse HEAD)" = "$GM_SHA"
-          for patch in platform/exynos990/patches/extremekrnl/patches/*.patch; do
-            echo "Validating ${patch}"
-            git -C "$RUNNER_TEMP/gmkernel-check" apply --check "$GITHUB_WORKSPACE/$patch"
-            git -C "$RUNNER_TEMP/gmkernel-check" apply "$GITHUB_WORKSPACE/$patch"
-          done
+          bash platform/exynos990/patches/extremekrnl/verify_gmkernel_android17.sh \
+            "$RUNNER_TEMP/gmkernel-check"
 
