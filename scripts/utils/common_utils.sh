@@ -4,6 +4,17 @@
 # [
 source "$SRC_DIR/scripts/utils/log_utils.sh"
 
+# Extraction must never wait for an interactive password on CI or recovery hosts.
+# Keep each argument intact: paths and command contents are not re-evaluated here.
+RUN_AS_ROOT()
+{
+    if [ "$(id -u)" -eq 0 ]; then
+        "$@"
+    else
+        sudo -n -- "$@"
+    fi
+}
+
 _CHECK_NON_EMPTY_PARAM()
 {
     if [ ! "$2" ]; then

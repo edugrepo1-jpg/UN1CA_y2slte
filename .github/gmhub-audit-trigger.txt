@@ -1,0 +1,2 @@
+Inspect pinned S926BXXSIEZJ1 API 37 source for r8s compatibility, 2026-11-01.
+Extraction and decoding only. No ROM build, no kernel build, no release.

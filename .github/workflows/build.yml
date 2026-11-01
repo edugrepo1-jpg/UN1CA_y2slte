@@ -44,9 +44,7 @@ jobs:
       - name: Validate r8s port and pinned GM kernel
         run: |
           set -euo pipefail
-          python3 -m unittest discover -s tests -p 'test_gmhub_oneui9*.py' -v
-          python3 -m unittest discover -s tests -p 'test_r8s_gm_hub.py' -v
-          python3 -m unittest discover -s tests -p 'test_r8s_ui_features.py' -v
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
           KERNEL_SOURCE=platform/exynos990/patches/extremekrnl/customize.sh
           KERNEL_BRANCH=$(sed -n 's/^GMKERNEL_BRANCH="\([^"]*\)"/\1/p' "$KERNEL_SOURCE")
           KERNEL_PIN=$(sed -n 's/^GMKERNEL_SHA="\([^"]*\)"/\1/p' "$KERNEL_SOURCE")
@@ -99,7 +97,8 @@ jobs:
             python-is-python3 python3 wget curl \
             bc bison 7zip brotli patchelf flex g++ git-lfs gperf imagemagick kmod \
             lib32readline-dev lib32z1-dev liblz4-dev liblz4-tool libncurses-dev libssl-dev libxml2 libxml2-utils \
-            lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
+            lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev \
+            f2fs-tools fuse3 libfuse3-dev
 
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           source "$HOME/.cargo/env"
@@ -109,10 +108,9 @@ jobs:
 
           wget https://raw.githubusercontent.com/kdrag0n/kramflash/refs/heads/master/mkbootimg.py && sudo ln -sf $(pwd)/mkbootimg.py /usr/bin/mkbootimg && chmod +x /usr/bin/mkbootimg
 
-          # Hosted runners do not always ship optional filesystem modules.
-          # Filesystem images are built with the user-space erofs/f2fs tools.
-          sudo modprobe erofs || echo "erofs module unavailable; userspace tooling will be used"
-          sudo modprobe f2fs || echo "f2fs module unavailable; userspace tooling will be used"
+          # F2FS extraction uses a real mount; userspace image builders cannot
+          # replace kernel mount support. Verify before any firmware download.
+          bash scripts/internal/prepare_ci_filesystems.sh
 
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"

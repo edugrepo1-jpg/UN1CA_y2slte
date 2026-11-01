@@ -23,9 +23,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate Android 17 donor, GMKernel, r8s geometry and workflow
         run: |
-          python3 -m unittest discover -s tests -p 'test_gmhub_oneui9*.py' -v
-          python3 -m unittest discover -s tests -p 'test_r8s_gm_hub.py' -v
-          python3 -m unittest discover -s tests -p 'test_r8s_ui_features.py' -v
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
       - name: Preflight all r8s patch entrypoints and Python source syntax
         run: |
           set -euo pipefail
@@ -48,4 +46,3 @@ jobs:
           test "$(grep -Fc '# CONFIG_KSU is not set' "$DEFCONFIG")" -eq 0
           bash platform/exynos990/patches/extremekrnl/verify_gmkernel_android17.sh \
             "$RUNNER_TEMP/gmkernel-check"
-
