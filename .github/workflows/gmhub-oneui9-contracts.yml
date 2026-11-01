@@ -43,18 +43,9 @@ jobs:
           git clone --depth 1 --single-branch --branch "$GM_BRANCH" "$GM_REPO" "$RUNNER_TEMP/gmkernel-check"
           test "$(git -C "$RUNNER_TEMP/gmkernel-check" rev-parse HEAD)" = "$GM_SHA"
           DEFCONFIG="$RUNNER_TEMP/gmkernel-check/arch/arm64/configs/exynos9830_defconfig"
-          test "$(grep -Ec '^(CONFIG_KSU=y|# CONFIG_KSU is not set) \
-            "$RUNNER_TEMP/gmkernel-check"
-
- "$DEFCONFIG")" = 1
-          grep -q '^CONFIG_KSU=y \
-            "$RUNNER_TEMP/gmkernel-check"
-
- "$DEFCONFIG"
-          test "$(grep -c '^CONFIG_SND_USB_AUDIO=y \
-            "$RUNNER_TEMP/gmkernel-check"
-
- "$DEFCONFIG")" = 1
+          grep -Fxq "CONFIG_KSU=y" "$DEFCONFIG"
+          test "$(grep -Fc 'CONFIG_SND_USB_AUDIO=y' "$DEFCONFIG")" -eq 1
+          test "$(grep -Fc '# CONFIG_KSU is not set' "$DEFCONFIG")" -eq 0
           bash platform/exynos990/patches/extremekrnl/verify_gmkernel_android17.sh \
             "$RUNNER_TEMP/gmkernel-check"
 
