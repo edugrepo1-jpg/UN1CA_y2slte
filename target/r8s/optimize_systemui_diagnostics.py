@@ -18,6 +18,10 @@ GATE = '''
 
 
 def optimize(text: str) -> str:
+    # Modern One UI 9 builds may no longer invoke expensive legacy Debug
+    # caller tracing from QSAnimView. There is nothing to optimize in that case.
+    if "Landroid/os/Debug;->getCallers" not in text:
+        return text
     if text.count(":r8s_apply_visual") == 4:
         return text
     if ":r8s_apply_visual" in text:
@@ -45,14 +49,20 @@ def optimize(text: str) -> str:
 def main() -> None:
     root = Path(sys.argv[1])
     candidates = list(root.glob("smali*/com/android/systemui/qs/animator/QSAnimView.smali"))
+    if not candidates:
+        print("GM HUB: One UI 9 has no legacy QSAnimView class; diagnostic patch not applicable")
+        return
     if len(candidates) != 1:
-        raise ValueError(f"Expected one QSAnimView class, found {len(candidates)}")
+        raise ValueError(f"Ambiguous QSAnimView class count: {len(candidates)}")
     path = candidates[0]
     before = path.read_text(encoding="utf-8")
     after = optimize(before)
     if after != before:
         path.write_text(after, encoding="utf-8", newline="\n")
-    print("QS diagnostics are opt-in; enable with log.tag.QSAnimView=DEBUG")
+    if after == before:
+        print("GM HUB: QSAnimView does not contain legacy caller tracing or is already patched")
+    else:
+        print("GM HUB: QS caller diagnostics are opt-in; enable with log.tag.QSAnimView=DEBUG")
 
 
 if __name__ == "__main__":
