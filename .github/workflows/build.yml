@@ -87,11 +87,11 @@ jobs:
           DEBIAN_FRONTEND=noninteractive sudo apt install -yq \
             attr ccache clang ffmpeg libbrotli-dev libbz2-dev \
             libgtest-dev libprotobuf-dev libunwind-dev libpcre2-dev \
-            libzstd-dev linux-modules-extra-$(uname -r) lld protobuf-compiler webp \
+            libzstd-dev lld protobuf-compiler webp \
             build-essential g++-aarch64-linux-gnu gcc-aarch64-linux-gnu \
             python-is-python3 python3 wget curl \
             bc bison 7zip brotli patchelf flex g++ git-lfs gperf imagemagick kmod \
-            lib32readline-dev lib32z1-dev liblz4-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils \
+            lib32readline-dev lib32z1-dev liblz4-dev liblz4-tool libncurses-dev libssl-dev libxml2 libxml2-utils \
             lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
 
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -102,7 +102,10 @@ jobs:
 
           wget https://raw.githubusercontent.com/kdrag0n/kramflash/refs/heads/master/mkbootimg.py && sudo ln -sf $(pwd)/mkbootimg.py /usr/bin/mkbootimg && chmod +x /usr/bin/mkbootimg
 
-          sudo modprobe erofs f2fs
+          # Hosted runners do not always ship optional filesystem modules.
+          # Filesystem images are built with the user-space erofs/f2fs tools.
+          sudo modprobe erofs || echo "erofs module unavailable; userspace tooling will be used"
+          sudo modprobe f2fs || echo "f2fs module unavailable; userspace tooling will be used"
 
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -152,7 +155,7 @@ jobs:
             echo "No existing swap found. Creating $SWAP_FILE"
           fi
 
-          sudo fallocate -l 12G "$SWAP_FILE"
+          sudo fallocate -l 6G "$SWAP_FILE"
           sudo chmod 600 "$SWAP_FILE"
           sudo mkswap "$SWAP_FILE"
           sudo swapon "$SWAP_FILE"
