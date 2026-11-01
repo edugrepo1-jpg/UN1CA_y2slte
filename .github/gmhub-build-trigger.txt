@@ -29,3 +29,16 @@ Pure Black now excludes cover/subscreen, avatars and media imagery.
 Preflight validates all One UI9, GM HUB, Pure Black, OneLab SSRM and
 Python/shell source contracts before expensive ROM compilation.
 No OTA / no release; preserve diagnostic outputs.
+
+Revision: diagnostic build 5, 2026-11-01.
+Carry all preflight fixes in ONE pinned build:
+- Changed One UI 9 QSAnimView.setAlpha ABI is treated as an optional
+  optimization, keeping SystemUI's original class untouched.
+- Align SSRM error-message contract with new EZJ1 diagnostics.
+- Pure Black only alters dark QS / main notification backgrounds, never cover,
+  subscreen, avatars, media artwork or unrelated notifications.
+- GM HUB uses only source-bundled icon drawables; prevent donor-specific
+  missing resource errors during SecSettings aapt2 compilation.
+- Source contracts run all r8s feature tests and Python/shell compilation
+  checks before the costly donor extraction and full APK/ROM packaging.
+- Keep the exact GMKernel/KSU pin and do not publish an unverified release.
