@@ -30,7 +30,7 @@ def patch_text(text: str) -> tuple[str, bool]:
     matches = list(METHOD.finditer(text))
     if len(matches) != 1:
         near = re.findall(
-            r"(?m)^\\.method[^\\n]*setMultiWindowEnabled[^\\n]*$",
+            r"(?m)^\.method[^\n]*setMultiWindowEnabled[^\n]*$",
             text
         )
         raise ValueError(
