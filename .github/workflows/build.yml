@@ -1,6 +1,11 @@
 name: GM HUB • One UI 9 experimental build
 
 on:
+  # Isolated, opt-in build trigger. Routine source/CI commits never start a
+  # multi-GB ROM compilation; the trigger file is changed only deliberately.
+  push:
+    branches: [gmhub-oneui9-r8s-20261101]
+    paths: ['.github/gmhub-build-trigger.txt']
   workflow_dispatch:
     inputs:
       build_type:
