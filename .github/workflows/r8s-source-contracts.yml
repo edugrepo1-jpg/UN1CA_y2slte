@@ -1,0 +1,22 @@
+name: r8s port source contracts
+
+on:
+  push:
+    branches:
+      - r8s-artisan-port-20261101
+  pull_request:
+    branches:
+      - sixteen
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  r8s-source-contracts:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Validate r8s source contracts, shell syntax and camera XML
+        run: python3 -m unittest discover -s tests -p 'test_r8s_unica_contracts.py' -v
