@@ -21,6 +21,7 @@ def load(name: str, path: str):
 
 pure_black = load("r8s_pure_black", "target/r8s/apply_pure_black.py")
 ssrm = load("r8s_ssrm", "target/r8s/patch_ssrm_multiwindow.py")
+qs_anim = load("r8s_qs_anim", "target/r8s/optimize_systemui_diagnostics.py")
 
 
 class PureBlackTests(unittest.TestCase):
@@ -130,6 +131,19 @@ class PureBlackTests(unittest.TestCase):
                 encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "No safe opaque dark"):
                 pure_black.apply_systemui_dark_backgrounds(apk)
+
+
+class OneUI9QSTests(unittest.TestCase):
+    def test_new_systemui_without_debug_callers_is_not_modified(self):
+        source = (
+            ".class public Lcom/android/systemui/qs/animator/QSAnimView;\n"
+            ".super Ljava/lang/Object;\n"
+            ".method public setAlpha(F)V\n"
+            "    .locals 2\n"
+            "    return-void\n"
+            ".end method\n"
+        )
+        self.assertEqual(qs_anim.optimize(source), source)
 
 
 class MultiWindowTests(unittest.TestCase):
