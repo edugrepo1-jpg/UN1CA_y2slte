@@ -7,3 +7,8 @@ Kernel branch: gmkernel-android17-r8s-20261101
 GMKernel SHA: 521d4e09a29288cc40afd2318be6ce52b3c5726f
 Mode: compile (no Pixeldrain, no OTA, no releases)
 Purpose: first actual full ROM/GMKernel build to expose Android 17 source/DEX/vendor incompatibilities.
+
+Revision: build 2 — integrate AOSP nonofficial keys, ncurses Ubuntu 24.04 fix, 6GiB swap,
+source + GM HUB UI contract tests, private ZIP/boot/dtbo artifacts, failure logs,
+cross-checked firmware and vendor audit documentation.
+Expected flow: GitHub concurrency replaces previous diagnostic run on same branch.
