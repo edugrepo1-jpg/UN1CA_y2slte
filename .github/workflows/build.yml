@@ -75,8 +75,12 @@ jobs:
           PLATFORM_KEY_PEM_B64: ${{ secrets.PLATFORM_KEY_PEM }}
         run: |
           set -euo pipefail
-          if [ -z "$PLATFORM_KEY_PK8_B64" ] || [ -z "$PLATFORM_KEY_PEM_B64" ]; then
-            echo "::error::The fork requires PLATFORM_KEY_PK8 and PLATFORM_KEY_PEM repository secrets before building."
+          if [[ -n "$PLATFORM_KEY_PK8_B64" && -n "$PLATFORM_KEY_PEM_B64" ]]; then
+            echo "Custom platform credentials supplied; treating build as a separate unofficial port."
+          elif [[ -z "$PLATFORM_KEY_PK8_B64" && -z "$PLATFORM_KEY_PEM_B64" ]]; then
+            echo "No private signing secrets provided; using repository AOSP test keys for this UNOFFICIAL compile."
+          else
+            echo "::error::Only one platform signing secret is configured; supply both or neither."
             exit 1
           fi
           sudo apt update
@@ -86,7 +90,7 @@ jobs:
             libzstd-dev linux-modules-extra-$(uname -r) lld protobuf-compiler webp \
             build-essential g++-aarch64-linux-gnu gcc-aarch64-linux-gnu \
             python-is-python3 python3 wget curl \
-            attr bc bison 7zip brotli patchelf openjdk-21-jdk flex g++ git-lfs gperf imagemagick kmod \
+            bc bison 7zip brotli patchelf flex g++ git-lfs gperf imagemagick kmod \
             lib32readline-dev lib32z1-dev liblz4-dev liblz4-tool libncurses5-dev libssl-dev libxml2 libxml2-utils \
             lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev
 
@@ -102,9 +106,13 @@ jobs:
 
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          printf %s "$PLATFORM_KEY_PK8_B64" | base64 --decode > security/unica_platform.pk8
-          printf %s "$PLATFORM_KEY_PEM_B64" | base64 --decode > security/unica_platform.x509.pem
-          test -s security/unica_platform.pk8 && test -s security/unica_platform.x509.pem
+          if [[ -n "$PLATFORM_KEY_PK8_B64" ]]; then
+            printf %s "$PLATFORM_KEY_PK8_B64" | base64 --decode > security/unica_platform.pk8
+            printf %s "$PLATFORM_KEY_PEM_B64" | base64 --decode > security/unica_platform.x509.pem
+            test -s security/unica_platform.pk8 && test -s security/unica_platform.x509.pem
+          else
+            test -s security/aosp_platform.pk8 && test -s security/aosp_platform.x509.pem
+          fi
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
