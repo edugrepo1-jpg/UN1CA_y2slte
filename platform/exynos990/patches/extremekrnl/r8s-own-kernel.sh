@@ -7,7 +7,7 @@
 # and the optional Charge Max V3 (DEFAULT OFF).
 R8S_GM_KERNEL_REPO="https://github.com/edugrepo1-jpg/android_kernel_samsung_exynos990.git"
 R8S_GM_KERNEL_BRANCH="r8s-unica-safe-20261101"
-R8S_GM_KERNEL_SHA="0fc53c9a554ec990732c0cdf9cc9e434a15139dd"
+R8S_GM_KERNEL_SHA="f12bd97bec1d874a53ba050563faecc2b85c20e8"
 
 R8S_BUILD_OWN_KERNEL()
 {
