@@ -1,4 +1,11 @@
 # [
+# r8s uses the user's dedicated, revision-pinned Exynos 990 kernel fork.
+# Other targets keep their existing Extreme Kernel integration untouched.
+if [[ "$TARGET_CODENAME" == "r8s" ]]; then
+    source "$SRC_DIR/platform/exynos990/patches/extremekrnl/r8s-own-kernel.sh" || return 1
+    return 0
+fi
+
 EXTREMEKRNL_REPO="https://github.com/At30c/SSM_990v2BYEXTREME/"
 
 KERNEL_MODEL="$TARGET_CODENAME"
