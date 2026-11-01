@@ -1,0 +1,9 @@
+GM HUB • build diagnóstico One UI 9 / Android 17 • 2026-11-01
+Maintainer: GMNevz
+Target: Samsung SM-G780F / r8s
+Source firmware: SM-S926B EUX S926BXXSIEZJ1
+Kernel repo: edugrepo1-jpg/android_kernel_samsung_exynos990
+Kernel branch: gmkernel-android17-r8s-20261101
+GMKernel SHA: 521d4e09a29288cc40afd2318be6ce52b3c5726f
+Mode: compile (no Pixeldrain, no OTA, no releases)
+Purpose: first actual full ROM/GMKernel build to expose Android 17 source/DEX/vendor incompatibilities.
