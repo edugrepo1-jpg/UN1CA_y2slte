@@ -1,5 +1,12 @@
 # [
 EXTREMEKRNL_REPO="https://github.com/At30c/SSM_990v2BYEXTREME/"
+# r8s uses the user's full GMKernel source; all other targets retain Extreme.
+GMKERNEL_REPO="https://github.com/edugrepo1-jpg/android_kernel_samsung_exynos990.git"
+GMKERNEL_BRANCH="gmkernel-android17-r8s-20261101"
+GMKERNEL_SHA="521d4e09a29288cc40afd2318be6ce52b3c5726f"
+if [[ "$TARGET_CODENAME" == "r8s" ]]; then
+    EXTREMEKRNL_REPO="$GMKERNEL_REPO"
+fi
 
 KERNEL_MODEL="$TARGET_CODENAME"
 KERNEL_CACHE_VERSION="2"
@@ -262,34 +269,32 @@ WRITE_KERNEL_CACHE_MANIFEST()
 
 SAFE_PULL_CHANGES()
 (
-    # Keep errexit/pipefail local to this subshell. Leaking errexit caused a
-    # later failed kernel command to terminate before EVAL could print it.
     set -eo pipefail
-
-    local PARENT
-    PARENT="$(pwd)"
-
-    cd "$KERNEL_TMP_DIR" || return 1
-
-    EVAL "git fetch origin"
-
-    LOCAL=$(git rev-parse @)
-    REMOTE=$(git rev-parse origin/main)
-    BASE=$(git merge-base @ origin/main)
-
-    # Now we have three cases that we need to take care of.
-    if [[ "$LOCAL" == "$REMOTE" ]]; then
-        LOG "- Local branch is up-to-date with remote."
-    elif [[ "$LOCAL" == "$BASE" ]]; then
-        LOG "- Fast-forward possible. Pulling."
-        EVAL "git pull --ff-only"
-    elif [[ "$REMOTE" == "$BASE" ]]; then
-        LOGW "- Local branch is ahead of remote. Not doing anything."
-    else
-        cd "$PARENT" || return 1
-        ABORT "Remote history has diverged (possible force-push)."
+    if [[ "$TARGET_CODENAME" == "r8s" ]]; then
+        local REMOTE_SHA LOCAL_SHA ORIGIN
+        ORIGIN="$(git -C "$KERNEL_TMP_DIR" remote get-url origin)"
+        [[ "$ORIGIN" == "$GMKERNEL_REPO" ]] || ABORT "Unexpected GMKernel remote: $ORIGIN"
+        REMOTE_SHA="$(git ls-remote "$GMKERNEL_REPO" "refs/heads/$GMKERNEL_BRANCH" | cut -f1)"
+        [[ "$REMOTE_SHA" == "$GMKERNEL_SHA" ]] || ABORT "GMKernel branch changed: update exact commit pin after audit"
+        git -C "$KERNEL_TMP_DIR" fetch --no-tags origin "$GMKERNEL_BRANCH" || return 1
+        LOCAL_SHA="$(git -C "$KERNEL_TMP_DIR" rev-parse HEAD)"
+        [[ "$LOCAL_SHA" == "$GMKERNEL_SHA" ]] || ABORT "Unexpected GMKernel HEAD: $LOCAL_SHA"
+        return 0
     fi
-
+    local PARENT LOCAL REMOTE BASE
+    PARENT="$(pwd)"
+    cd "$KERNEL_TMP_DIR" || return 1
+    EVAL "git fetch origin"
+    LOCAL="$(git rev-parse @)"
+    REMOTE="$(git rev-parse origin/main)"
+    BASE="$(git merge-base @ origin/main)"
+    if [[ "$LOCAL" == "$REMOTE" ]]; then
+        LOG "- Existing Extreme source up to date."
+    elif [[ "$LOCAL" == "$BASE" ]]; then
+        EVAL "git pull --ff-only"
+    elif [[ "$REMOTE" != "$BASE" ]]; then
+        ABORT "Extreme source diverged; manual review required"
+    fi
     cd "$PARENT" || return 1
 )
 
@@ -306,8 +311,15 @@ REPLACE_KERNEL_BINARIES()
             ABORT "Could not pull latest Kernel changes. If you hold local changes, please rebase to the new base. If not, cleaning the kernel_tmp_dir should suffice."
         fi
     else
-        LOG "- Cloning ExtremeKernel"
-        EVAL "git clone \"$EXTREMEKRNL_REPO\" --single-branch \"$KERNEL_TMP_DIR\""
+        if [[ "$TARGET_CODENAME" == "r8s" ]]; then
+            LOG "- Cloning pinned GMKernel for Android 17"
+            EVAL "git clone --single-branch --branch \"$GMKERNEL_BRANCH\" \"$GMKERNEL_REPO\" \"$KERNEL_TMP_DIR\""
+            [[ "$(git -C "$KERNEL_TMP_DIR" rev-parse HEAD)" == "$GMKERNEL_SHA" ]] ||
+                ABORT "Newly cloned GMKernel does not match pinned SHA"
+        else
+            LOG "- Cloning ExtremeKernel"
+            EVAL "git clone \"$EXTREMEKRNL_REPO\" --single-branch \"$KERNEL_TMP_DIR\""
+        fi
     fi
 
     INIT_KERNEL_SUBMODULES
@@ -332,6 +344,16 @@ REPLACE_KERNEL_BINARIES()
         # KernelSU. Record the post-build state used to create these images.
         KERNEL_CACHE_KEY="$(GET_KERNEL_CACHE_KEY)" || ABORT "Could not update the kernel cache key."
         WRITE_KERNEL_CACHE_MANIFEST || ABORT "Could not write the verified kernel cache manifest."
+    fi
+
+    if [[ "$TARGET_CODENAME" == "r8s" ]]; then
+        local BOOT_BYTES DTBO_BYTES
+        BOOT_BYTES="$(stat -c%s "$KERNEL_TMP_DIR/build/out/r8s/boot.img")"
+        DTBO_BYTES="$(stat -c%s "$KERNEL_TMP_DIR/build/out/r8s/dtbo.img")"
+        (( BOOT_BYTES <= 61865984 )) || ABORT "GMKernel boot.img is larger than the SM-G780F 59-MiB boot partition"
+        (( DTBO_BYTES <= TARGET_DTBO_PARTITION_SIZE )) || ABORT "GMKernel dtbo.img exceeds the partition"
+        python3 "$SRC_DIR/target/r8s/validate_gmkernel_dtbo.py" \
+            "$KERNEL_TMP_DIR/build/out/r8s/dtbo.img" || ABORT "Wrong GMKernel r8s DTBO selectors"
     fi
 
     rm -f "$WORK_DIR/kernel/boot.img" "$WORK_DIR/kernel/dtbo.img" \
