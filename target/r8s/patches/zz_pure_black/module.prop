@@ -1,0 +1,5 @@
+id=r8s_pure_black
+name=Pure Black AMOLED for Samsung One UI 8.5 SystemUI
+author=GM Nevz / UN1CA port contributors
+version=1
+description=Map only verified opaque Samsung QS/night backgrounds to #FF000000, preserve light theme, text, scrims and accent colors.
