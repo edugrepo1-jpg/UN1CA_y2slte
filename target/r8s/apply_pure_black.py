@@ -25,6 +25,15 @@ COLOR_TAG = re.compile(
     re.I,
 )
 HEX = re.compile(r"^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
+# API37 Samsung often stores background colors as theme/resource references,
+# rather than a literal dark value. Change these only in night variants.
+REF_COLOR_TAG = re.compile(
+    r'(<color\b[^>]*\bname="(?P<name>[^"]+)"[^>]*>\s*)'
+    r'(?P<value>[@?][^<\s]+)'
+    r'(\s*</color>)',
+    re.I,
+)
+
 ATTR_COLOR = re.compile(r'(\bandroid:color\s*=\s*")(?P<value>#[a-fA-F0-9]{6}(?:[a-fA-F0-9]{2})?)(")')
 IN_XML = re.compile(r"(?s)<resources\b[^>]*>")
 EXCLUDED = (
@@ -75,7 +84,20 @@ def replace_color_tags(content: str, matched: set[str]) -> str:
             return match.group(0)
         matched.add(name)
         return match.group(1) + "#ff000000" + match.group(4)
-    return COLOR_TAG.sub(change, content)
+    content = COLOR_TAG.sub(change, content)
+
+    def change_reference(match: re.Match[str]) -> str:
+        name, ref = match.group("name"), match.group("value")
+        if not is_target(name):
+            return match.group(0)
+        if any(bad in ref.lower() for bad in (
+            "transparent", "scrim", "dim", "alpha", "gradient", "ripple"
+        )):
+            return match.group(0)
+        matched.add(name)
+        return match.group(1) + "#ff000000" + match.group(4)
+
+    return REF_COLOR_TAG.sub(change_reference, content)
 
 
 def replace_flat_color_attr(content: str, matched: set[str], name: str) -> str:
@@ -102,12 +124,18 @@ def collect_base_colors(res: Path, inventory: list[str]) -> dict[str, str]:
             source = p.read_text(encoding="utf-8")
         except UnicodeError:
             continue
-        for m in COLOR_TAG.finditer(source):
+        for m in (*COLOR_TAG.finditer(source), *REF_COLOR_TAG.finditer(source)):
             name, value = m.group("name"), m.group("value")
             if not is_target(name):
                 continue
             inventory.append(f"{p.relative_to(res)} | {name} = {value}")
-            if not is_opaque_near_black(value):
+            is_opaque = is_opaque_near_black(value)
+            is_safe_ref = value.startswith(("@", "?")) and not any(
+                bad in value.lower() for bad in (
+                    "transparent", "scrim", "dim", "alpha", "gradient", "ripple"
+                )
+            )
+            if not (is_opaque or is_safe_ref):
                 continue
             if name in collected and collected[name].lower() != value.lower():
                 conflicts.add(name)
