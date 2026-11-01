@@ -105,6 +105,31 @@ class PureBlackTests(unittest.TestCase):
             )
             self.assertNotIn("qs_panel_scrim", overlay)
 
+    def test_existing_night_name_in_another_file_is_not_redeclared(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = Path(tmp)
+            (apk / "res/values").mkdir(parents=True)
+            (apk / "res/values-night").mkdir(parents=True)
+            (apk / "res/values/colors.xml").write_text(
+                '<resources><color name="qs_panel_background_color">'
+                '@color/dynamic_surface</color></resources>',
+                encoding="utf-8",
+            )
+            existing = apk / "res/values-night/panel_colors.xml"
+            existing.write_text(
+                '<resources><color name="qs_panel_background_color">'
+                '#ff292929</color></resources>',
+                encoding="utf-8",
+            )
+            pure_black.apply_systemui_dark_backgrounds(apk)
+            self.assertIn("#ff000000", existing.read_text(encoding="utf-8"))
+            new = apk / "res/values-night/colors.xml"
+            if new.exists():
+                self.assertNotIn(
+                    'name="qs_panel_background_color"',
+                    new.read_text(encoding="utf-8"),
+                )
+
     def test_oneui9_qualified_night_xml_is_patched_without_day_changes(self):
         with tempfile.TemporaryDirectory() as tmp:
             apk = Path(tmp)
