@@ -83,6 +83,22 @@ class PureBlackTests(unittest.TestCase):
             self.assertNotIn("panel_scrim", overlay)
             self.assertIn("quick_settings_panel_background", report.read_text())
 
+    def test_does_not_blacken_subscreen_media_or_avatar_content(self):
+        unsafe = (
+            "clear_cover_subscreen_notification_hun_top_background",
+            "qs_media_art_background",
+            "qs_user_switcher_avatar_background",
+            "subscreen_notification_detail_content_image_background",
+            "sec_qs_media_player_guts_background_color",
+            "controls_panel_background",
+            "notification_material_background_media_default_color",
+        )
+        for resource in unsafe:
+            with self.subTest(resource=resource):
+                self.assertFalse(pure_black.is_target(resource))
+        self.assertTrue(pure_black.is_target("sec_panel_background_color"))
+        self.assertTrue(pure_black.is_target("qs_detail_background_color"))
+
     def test_oneui9_reference_background_gets_dark_only_override(self):
         with tempfile.TemporaryDirectory() as tmp:
             apk = Path(tmp)
