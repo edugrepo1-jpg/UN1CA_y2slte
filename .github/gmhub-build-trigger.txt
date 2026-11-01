@@ -12,3 +12,10 @@ Revision: build 2 — integrate AOSP nonofficial keys, ncurses Ubuntu 24.04 fix,
 source + GM HUB UI contract tests, private ZIP/boot/dtbo artifacts, failure logs,
 cross-checked firmware and vendor audit documentation.
 Expected flow: GitHub concurrency replaces previous diagnostic run on same branch.
+
+Revision: diagnostic build 3, 2026-11-01.
+Fix the confirmed EZJ1 Pure Black blocker: One UI 9-safe discovery of actual
+dark resources, night-only aliases/overlays, validation of resource uniqueness,
+and recorded map in build artifacts.
+Preflight now includes GM HUB, pure-black, OneLab SSRM, and QS adaptation tests.
+No external ROM release / no OTA publishing. User GMNevz-owned GMKernel unchanged.
