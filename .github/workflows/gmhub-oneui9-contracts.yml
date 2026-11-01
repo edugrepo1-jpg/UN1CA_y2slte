@@ -1,0 +1,19 @@
+name: GM HUB One UI 9 source contracts
+
+on:
+  push:
+    branches: [gmhub-oneui9-r8s-20261101]
+  pull_request:
+    branches: [sixteen]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Android 17 donor, GMKernel, r8s geometry and workflow
+        run: python3 -m unittest discover -s tests -p 'test_gmhub_oneui9*.py' -v
