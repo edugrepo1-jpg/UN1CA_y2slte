@@ -4,13 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       build_type:
-        description: 'Build type (debug = Pixeldrain only, test = + GitHub release, release = + OTA XML)'
+        description: 'compile = build only (no publication); debug/test/release may publish'
         type: choice
         options:
+          - compile
           - debug
           - test
           - release
-        default: debug
+        default: compile
 
 permissions:
   contents: write
@@ -129,7 +130,7 @@ jobs:
           ./scripts/make_rom.sh
           
       - name: Upload to Pixeldrain, GitHub Release, Split, XML
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.build_type != 'compile'
         env:
           PIXELDRAIN_API_KEY: ${{ secrets.PD_API }}
           GH_TOKEN: ${{ github.token }}
@@ -213,7 +214,7 @@ jobs:
               git clone --single-branch --branch "$OTA_BRANCH" "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" updater_repo
               cd updater_repo
               git checkout "$OTA_BRANCH"
-              mkdir -p updater
+              mkdir -p updater/v2
               XML_FILE="updater/v2/${{ matrix.target }}.xml"
 
               {
@@ -240,7 +241,7 @@ jobs:
 
               git add $XML_FILE
               git commit -m "updater: v2: ${{ matrix.target }}.xml: Update to $VERSION" || true
-              git pull --rebase origin main
+              git pull --rebase origin "$OTA_BRANCH"
               git push origin "$OTA_BRANCH"
               cd ..
             fi
