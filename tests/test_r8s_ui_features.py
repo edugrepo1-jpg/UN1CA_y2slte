@@ -53,6 +53,74 @@ class PureBlackTests(unittest.TestCase):
             self.assertIn("#ffdddddd", day.read_text(encoding="utf-8"))
             self.assertEqual(pure_black.apply_systemui_dark_backgrounds(apk), changes)
 
+    def test_oneui9_base_colors_generate_night_only_override(self):
+        """EZJ1 may not ship sec_qs_background or values-night/colors.xml."""
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = Path(tmp)
+            (apk / "res/values").mkdir(parents=True)
+            base = apk / "res/values/colors.xml"
+            original = (
+                '<resources>\n'
+                '<color name="quick_settings_panel_background">#ff161616</color>\n'
+                '<color name="quick_settings_tile_background">#ff222222</color>\n'
+                '<color name="qs_panel_scrim">#ff111111</color>\n'
+                '</resources>'
+            )
+            base.write_text(original, encoding="utf-8")
+            report = apk / "pure-black-report.txt"
+            changes = pure_black.apply_systemui_dark_backgrounds(apk, report)
+            self.assertTrue(changes)
+            self.assertEqual(base.read_text(encoding="utf-8"), original)
+            overlay = (apk / "res/values-night/colors.xml").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn(
+                '<color name="quick_settings_panel_background">#ff000000</color>',
+                overlay,
+            )
+            self.assertNotIn("tile_background", overlay)
+            self.assertNotIn("panel_scrim", overlay)
+            self.assertIn("quick_settings_panel_background", report.read_text())
+
+    def test_oneui9_qualified_night_xml_is_patched_without_day_changes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = Path(tmp)
+            (apk / "res/color-night-v31").mkdir(parents=True)
+            night = apk / "res/color-night-v31/notification_shade_bg.xml"
+            night.write_text(
+                '<selector xmlns:android="http://schemas.android.com/apk/res/android">'
+                '<item android:color="#ff202020" />'
+                '</selector>',
+                encoding="utf-8",
+            )
+            changes = pure_black.apply_systemui_dark_backgrounds(apk)
+            self.assertEqual(changes["res/color-night-v31/notification_shade_bg.xml"], 1)
+            self.assertIn("#ff000000", night.read_text(encoding="utf-8"))
+
+    def test_night_only_drawable_shape_override(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = Path(tmp)
+            (apk / "res/drawable").mkdir(parents=True)
+            original = (
+                '<shape xmlns:android="http://schemas.android.com/apk/res/android">'
+                '<solid android:color="#ff1b1b1b" /></shape>'
+            )
+            (apk / "res/drawable/sec_qs_panel_background.xml").write_text(
+                original, encoding="utf-8"
+            )
+            changes = pure_black.apply_systemui_dark_backgrounds(apk)
+            self.assertTrue(changes)
+            self.assertIn(
+                "#ff000000",
+                (apk / "res/drawable-night/sec_qs_panel_background.xml")
+                .read_text(encoding="utf-8"),
+            )
+            self.assertIn(
+                "#ff1b1b1b",
+                (apk / "res/drawable/sec_qs_panel_background.xml")
+                .read_text(encoding="utf-8"),
+            )
+
     def test_missing_donor_resource_fails_closed(self):
         with tempfile.TemporaryDirectory() as tmp:
             apk = Path(tmp)
@@ -60,7 +128,7 @@ class PureBlackTests(unittest.TestCase):
             (apk / "res/values-night/colors.xml").write_text(
                 '<resources><color name="qs_tile_text">#ffffffff</color></resources>',
                 encoding="utf-8")
-            with self.assertRaisesRegex(ValueError, "sec_qs_background"):
+            with self.assertRaisesRegex(ValueError, "No safe opaque dark"):
                 pure_black.apply_systemui_dark_backgrounds(apk)
 
 
