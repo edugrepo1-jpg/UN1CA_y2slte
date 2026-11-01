@@ -39,9 +39,22 @@ jobs:
           set -euo pipefail
           GM_REPO=https://github.com/edugrepo1-jpg/android_kernel_samsung_exynos990.git
           GM_BRANCH=gmkernel-android17-r8s-20261101
-          GM_SHA=521d4e09a29288cc40afd2318be6ce52b3c5726f
+          GM_SHA=0ac4cc0d535e67fd0ab6a822f303acef1377300f
           git clone --depth 1 --single-branch --branch "$GM_BRANCH" "$GM_REPO" "$RUNNER_TEMP/gmkernel-check"
           test "$(git -C "$RUNNER_TEMP/gmkernel-check" rev-parse HEAD)" = "$GM_SHA"
+          DEFCONFIG="$RUNNER_TEMP/gmkernel-check/arch/arm64/configs/exynos9830_defconfig"
+          test "$(grep -Ec '^(CONFIG_KSU=y|# CONFIG_KSU is not set) \
+            "$RUNNER_TEMP/gmkernel-check"
+
+ "$DEFCONFIG")" = 1
+          grep -q '^CONFIG_KSU=y \
+            "$RUNNER_TEMP/gmkernel-check"
+
+ "$DEFCONFIG"
+          test "$(grep -c '^CONFIG_SND_USB_AUDIO=y \
+            "$RUNNER_TEMP/gmkernel-check"
+
+ "$DEFCONFIG")" = 1
           bash platform/exynos990/patches/extremekrnl/verify_gmkernel_android17.sh \
             "$RUNNER_TEMP/gmkernel-check"
 

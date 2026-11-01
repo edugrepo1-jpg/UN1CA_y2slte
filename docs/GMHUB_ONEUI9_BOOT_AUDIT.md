@@ -7,7 +7,7 @@
 | Framework + SystemUI + SecSettings | Samsung S24+ SM-S926B EUX `S926BXXSIEZJ1`, One UI 9, Android 17 | API 37, firmware Samsung publicado em 2026-10-26 |
 | Vendor/hardware | Samsung SM-G780F AUT, Exynos 990 | Firmware original do S20 FE, `TARGET_PLATFORM_SDK_VERSION=33` (ramo do vendor legado API 30 não é o mesmo que versão do sistema doador) |
 | Boot partition | SM-G780F PIT | 61.865.984 bytes (59 MiB), verificação antes de copiar `boot.img` |
-| Kernel | `edugrepo1-jpg/android_kernel_samsung_exynos990` / `gmkernel-android17-r8s-20261101` | SHA `521d4e09a29288cc40afd2318be6ce52b3c5726f`, KSU Next Legacy, Charge Max V3 e alterações do usuário |
+| Kernel | `edugrepo1-jpg/android_kernel_samsung_exynos990` / `gmkernel-android17-r8s-20261101` | SHA `0ac4cc0d535e67fd0ab6a822f303acef1377300f`, KSU Next Legacy, Charge Max V3 e alterações do usuário |
 | DTBO | Gerado pelo GMKernel, não o Extreme | Revisões (custom0, custom1) = (0,1), (2,4), (5,255); `validate_gmkernel_dtbo.py` valida a tabela final |
 | Tela | EA8079 / S6E3FC3 | 60/120 universal, 96 específico EA8079; nunca oferecer 48Hz ou WQHD como modo físico no GM HUB |
 | Câmera | Mantém patches de câmera/vídeo da UN1CA + mods r8s | Confrontar IDs 2/50 com HAL ativo e Smali Android 17 antes de declarar funcional |
@@ -55,3 +55,6 @@
 **Nova execução completa sem publicação:** https://github.com/edugrepo1-jpg/UN1CA_y2slte/actions/runs/41340161531
 
 **Não confirmado:** conclusão dessa execução, rebuild final de APK/JAR, Pure Black funcionando no aparelho, digital, câmera, conectividade, Charging Max, GM HUB e boot físico. O banner personalizado ainda aguarda inclusão real do arquivo de imagem no repositório; não usar referência XML a um asset ausente.
+
+## Build 5 / vibração virtual (1º de novembro de 2026)
+O build 41345814832 compilou GMKernel e avançou até `unica/patches/product_feature/customize.sh`, onde o patch legado de vibração virtual de 2025 falhou em nove classes de `services.jar` da firmware EZJ1. Foi substituído, **somente para r8s/API37**, por uma adaptação que mantém Bluetooth e haptics e suprime apenas os dois métodos conhecidos de áudio de vibração; se os métodos inexistirem com referências ainda presentes, a compilação para com diagnóstico explícito em vez de alterar o sistema às cegas. A compilação completa e a aplicação no donor permanecem pendentes. Avisos adicionais (config duplicado KSU/USB, `modpost` e caminhos já ausentes) foram classificados separadamente. Ajustei a defconfig de nosso kernel para remover declarações duplicadas sem mudar os recursos ativos, fixando este novo SHA na ROM.
