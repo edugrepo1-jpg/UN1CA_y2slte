@@ -171,8 +171,18 @@ if [ "$TARGET_PLATFORM_SDK_VERSION" -lt "35" ]; then
     if [ -f "$WORK_DIR/vendor/bin/hw/vendor.samsung.hardware.light-service" ] && \
             ! xxd -p -c 4 "$WORK_DIR/vendor/bin/hw/vendor.samsung.hardware.light-service" | grep -q "1853$"; then
         PATCHED=true
-        APPLY_PATCH "system" "system/framework/services.jar" \
-            "$MODPATH/lights/services.jar/0001-Backport-legacy-SehLights-HAL-code.patch"
+        LIGHTS_PATCH="$MODPATH/lights/services.jar/0001-Backport-legacy-SehLights-HAL-code.patch"
+        if [[ "$TARGET_CODENAME" == "r8s" ]]; then
+            DECODE_APK "system" "system/framework/services.jar" || return 1
+            LIGHTS_IMPL="$(find "$APKTOOL_DIR/system/framework/services.jar" \
+                -type f -path '*/com/android/server/lights/LightsService$LightImpl.smali' -print -quit)"
+            if [ -n "$LIGHTS_IMPL" ] && \
+                    grep -Fq 'LightsService$VintfHalCache;' "$LIGHTS_IMPL"; then
+                LIGHTS_PATCH="$MODPATH/lights/services.jar/0002-Backport-SehLights-with-VintfHalCache.patch"
+            fi
+        fi
+        APPLY_PATCH "system" "system/framework/services.jar" "$LIGHTS_PATCH"
+        unset LIGHTS_PATCH LIGHTS_IMPL
     fi
 fi
 

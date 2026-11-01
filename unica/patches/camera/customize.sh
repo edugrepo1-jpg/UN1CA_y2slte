@@ -42,6 +42,11 @@ else
     _LOG "File not found: $SRC_DIR/target/$TARGET_CODENAME/camera/camera-feature.xml"
 fi
 
+# r8s portrait enum normalization; retain native One UI 9 HAL/video patches.
+if [[ "$TARGET_CODENAME" == "r8s" ]]; then
+    . "$MODPATH/r8s_modes.sh" || return 1
+fi
+
 LOG_STEP_IN
 if grep -q "DURING_SMARTVIEW" "$WORK_DIR/system/system/cameradata/camera-feature.xml" 2> /dev/null; then
     LOG "- Removing Smart View limitations flags"
