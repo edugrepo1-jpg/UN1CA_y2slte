@@ -165,7 +165,7 @@ def add_night_overrides(res: Path, candidates: dict[str, str],
     for existing in sorted(res.glob("values-night*/*.xml")):
         source = existing.read_text(encoding="utf-8")
         defined_at_night.update(
-            re.findall(r'<color\\b[^>]*\\bname="([^"]+)"', source)
+            re.findall(r'<color\b[^>]*\bname="([^"]+)"', source)
         )
     added = sorted(set(candidates) - defined_at_night)
     if not added:
