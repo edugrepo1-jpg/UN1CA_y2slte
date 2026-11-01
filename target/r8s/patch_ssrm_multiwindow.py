@@ -64,9 +64,28 @@ def patch_text(text: str) -> tuple[str, bool]:
         "    const/4 p2, 0x1\n"
         f"    {SENTINEL}\n"
     )
-    # Insert after local directive; Samsung's existing body remains unmodified.
-    # .param/.annotation/line directives are retained untouched.
-    body = body[:local.end()] + injection + body[local.end():]
+    # Smali allows .param/.annotation declarations after .locals. Insert code
+    # after those directives and before the first original opcode/label.
+    # This avoids putting bytecode inside an annotation block.
+    position = local.end()
+    in_annotation = False
+    while position < len(body):
+        eol = body.find("\\n", position)
+        eol = len(body) if eol < 0 else eol + 1
+        line = body[position:eol].strip()
+        if line.startswith(".annotation"):
+            in_annotation = True
+        elif line.startswith(".end annotation"):
+            in_annotation = False
+        elif not in_annotation and line and not line.startswith((
+            "#", ".param", ".line", ".prologue", ".local", ".restart local",
+            ".end local",
+        )):
+            break
+        position = eol
+    if in_annotation:
+        raise ValueError("Unterminated Smali annotation in DZG1 multi-window method")
+    body = body[:position] + injection + body[position:]
     return text[:method.start("body")] + body + text[method.end("body"):], True
 
 
