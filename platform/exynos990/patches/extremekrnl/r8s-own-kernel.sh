@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Only loaded for SM-G780F / r8s. Other Exynos 990 targets retain Extreme Kernel.
 #
-# Based on our own kernel fork, without the experimental
-# r8s-chargemax-current-thermal-20261031 branch.
-# The selected commit already contains the accepted 96-Hz/DT corrections
-# and the optional Charge Max V3 (DEFAULT OFF).
+# Full, user-owned GM kernel branch derived from r8s-chargemax-current-thermal-20261031.
+# Includes our Charge Max V3 default ON, higher r8s charging current and thermal
+# thresholds, r8s DT revisions, EA8079 96 Hz and the Clang bootstrap repair.
+# IMPORTANT: threshold increases require physical thermal/charging validation.
 R8S_GM_KERNEL_REPO="https://github.com/edugrepo1-jpg/android_kernel_samsung_exynos990.git"
-R8S_GM_KERNEL_BRANCH="r8s-unica-safe-20261101"
-R8S_GM_KERNEL_SHA="f12bd97bec1d874a53ba050563faecc2b85c20e8"
+R8S_GM_KERNEL_BRANCH="r8s-unica-full-20261101"
+R8S_GM_KERNEL_SHA="fa5d1658e79b441e42073f874a6f81aee0b65459"
 
 R8S_BUILD_OWN_KERNEL()
 {
@@ -120,6 +120,6 @@ PY
     cp -f "$build_dtbo" "$WORK_DIR/kernel/dtbo.img" || return 1
     # r8s has no LTE sibling DTBO artifact.
     rm -f "$WORK_DIR/kernel/dtbo_lte.img"
-    LOG "- Using GM r8s kernel $R8S_GM_KERNEL_SHA; Charge Max V3 remains opt-in"
+    LOG "- Using GM r8s kernel $R8S_GM_KERNEL_SHA; Charge Max V3 is enabled by default in the pinned GM kernel"
 }
 R8S_BUILD_OWN_KERNEL
