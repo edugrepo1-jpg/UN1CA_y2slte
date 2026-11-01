@@ -10,6 +10,12 @@ on:
 permissions:
   contents: read
 
+# Keep only the latest source audit on this development branch. Full ROM builds
+# have a separate workflow name and are never cancelled by this audit.
+concurrency:
+  group: gmhub-source-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: ubuntu-24.04
@@ -20,6 +26,14 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_gmhub_oneui9*.py' -v
           python3 -m unittest discover -s tests -p 'test_r8s_gm_hub.py' -v
           python3 -m unittest discover -s tests -p 'test_r8s_ui_features.py' -v
+      - name: Preflight all r8s patch entrypoints and Python source syntax
+        run: |
+          set -euo pipefail
+          python3 -m compileall -q target/r8s tests
+          find target/r8s/patches -name customize.sh -type f -print0 |
+            xargs -0 -r -n 1 bash -n
+          bash -n platform/exynos990/patches/extremekrnl/customize.sh
+          bash -n unica/mods/settings/customize.sh
       - name: Validate already-integrated Android 17 kernel ABI in pinned GMKernel
         run: |
           set -euo pipefail
