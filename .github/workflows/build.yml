@@ -39,7 +39,7 @@ jobs:
       - name: Validate r8s port and pinned GM kernel
         run: |
           set -euo pipefail
-          python3 -m unittest discover -s tests -p 'test_r8s_unica_contracts.py' -v
+          python3 -m unittest discover -s tests -p 'test_r8s*.py' -v
           KERNEL_SOURCE=platform/exynos990/patches/extremekrnl/r8s-own-kernel.sh
           KERNEL_BRANCH=$(sed -n 's/^R8S_GM_KERNEL_BRANCH="\([^"]*\)"/\1/p' "$KERNEL_SOURCE")
           KERNEL_PIN=$(sed -n 's/^R8S_GM_KERNEL_SHA="\([^"]*\)"/\1/p' "$KERNEL_SOURCE")
