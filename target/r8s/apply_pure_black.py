@@ -158,8 +158,16 @@ def add_night_overrides(res: Path, candidates: dict[str, str],
             raise ValueError("Invalid values-night/colors.xml resource table")
     else:
         original = '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n</resources>\n'
-    already = {m.group("name") for m in COLOR_TAG.finditer(original)}
-    added = sorted(set(candidates) - already)
+    # APKTool may split an Android qualifier across several XML files.
+    # Re-declaring one resource in the same values-night qualifier would
+    # cause aapt2 duplicate-resource failures.
+    defined_at_night: set[str] = set()
+    for existing in sorted(res.glob("values-night*/*.xml")):
+        source = existing.read_text(encoding="utf-8")
+        defined_at_night.update(
+            re.findall(r'<color\\b[^>]*\\bname="([^"]+)"', source)
+        )
+    added = sorted(set(candidates) - defined_at_night)
     if not added:
         return
     block = "".join(f'    <color name="{name}">#ff000000</color>\n'
@@ -231,7 +239,9 @@ def apply_systemui_dark_backgrounds(apk_root: Path,
                 continue
             target = night_root / file.name
             # A donor-supplied specific night file is authoritative.
-            if target.exists():
+            if any(p.is_file() for p in res.glob(
+                f"{folder}-night*/{file.name}"
+            )):
                 continue
             night_root.mkdir(parents=True, exist_ok=True)
             target.write_text(updated, encoding="utf-8")
