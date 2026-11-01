@@ -220,7 +220,7 @@ class MultiWindowTests(unittest.TestCase):
         self.assertEqual(ssrm.patch_text(updated), (updated, False))
 
     def test_unrecognized_firmware_method_fails(self):
-        with self.assertRaisesRegex(ValueError, "exactly one"):
+        with self.assertRaisesRegex(ValueError, "needs one"):
             ssrm.patch_text(".method public other(Ljava/lang/String;Z)V\n.end method\n")
 
     def test_real_file_layout(self):
