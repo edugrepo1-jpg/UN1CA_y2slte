@@ -45,6 +45,8 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m unittest discover -s tests -p 'test_gmhub_oneui9*.py' -v
+          python3 -m unittest discover -s tests -p 'test_r8s_gm_hub.py' -v
+          python3 -m unittest discover -s tests -p 'test_r8s_ui_features.py' -v
           KERNEL_SOURCE=platform/exynos990/patches/extremekrnl/customize.sh
           KERNEL_BRANCH=$(sed -n 's/^GMKERNEL_BRANCH="\([^"]*\)"/\1/p' "$KERNEL_SOURCE")
           KERNEL_PIN=$(sed -n 's/^GMKERNEL_SHA="\([^"]*\)"/\1/p' "$KERNEL_SOURCE")
