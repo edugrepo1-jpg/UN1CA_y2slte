@@ -5,7 +5,7 @@ if [[ "$TARGET_CODENAME" != "r8s" || "$SOURCE_PLATFORM_SDK_VERSION" -lt 36 ]]; t
     return 0
 fi
 
-# Derive the exact method from the pinned Android 16 S926BXXSGDZG1 framework
+# Derive the exact method from the pinned Android 17 S926BXXSIEZJ1 framework
 # and modify only SSRM's request to disable multi-window. Do not alter thermal
 # sensor readings, SIOP, CPU/GPU frequency limits or battery protection.
 DECODE_APK "system" "system/framework/framework.jar" || return 1
