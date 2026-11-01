@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen android:title="@string/paradox_app_manager_title"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <androidx.preference.EditTextPreference android:icon="@drawable/sec_ic_settings_advanced_feature" android:title="@string/paradox_mgr_search_hint" android:key="search_apps_query" android:dialogMessage="@string/paradox_mgr_search_dialog" />
+    <PreferenceCategory android:key="apps_category">
+        <Preference android:title="@string/paradox_mgr_loading" android:selectable="false" android:key="loading_pref" />
+    </PreferenceCategory>
+</PreferenceScreen>

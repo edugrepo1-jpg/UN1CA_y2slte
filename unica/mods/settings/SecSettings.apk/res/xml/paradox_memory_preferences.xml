@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen android:title="@string/paradox_ram_title"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <Preference android:icon="@drawable/sec_ic_settings_devicecare" android:title="@string/paradox_ram_monitor" android:key="ram_monitor" android:summary="-- / --" />
+    <Preference android:icon="@drawable/sec_ic_settings_smart_manager" android:title="@string/paradox_active_monitor" android:key="active_monitor" android:summary="--" />
+    <Preference android:icon="@drawable/sec_ic_settings_devicecare" android:title="@string/paradox_cached_monitor" android:key="cached_monitor" android:summary="--" />
+    <Preference android:icon="@drawable/sec_ic_settings_software_update" android:title="@string/paradox_zram_monitor" android:key="zram_monitor" android:summary="-- / --" />
+</PreferenceScreen>
