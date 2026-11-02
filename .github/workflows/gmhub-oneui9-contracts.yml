@@ -42,7 +42,7 @@ jobs:
           set -euo pipefail
           GM_REPO=https://github.com/edugrepo1-jpg/android_kernel_samsung_exynos990.git
           GM_BRANCH=gmkernel-android17-r8s-20261101
-          GM_SHA=52569b5093164b404251a898bfcb9e486193755c
+          GM_SHA=1c29439b9fae2b3d07fdfb82b5985f1653e24438
           git clone --depth 1 --single-branch --branch "$GM_BRANCH" "$GM_REPO" "$RUNNER_TEMP/gmkernel-check"
           test "$(git -C "$RUNNER_TEMP/gmkernel-check" rev-parse HEAD)" = "$GM_SHA"
           DEFCONFIG="$RUNNER_TEMP/gmkernel-check/arch/arm64/configs/exynos9830_defconfig"

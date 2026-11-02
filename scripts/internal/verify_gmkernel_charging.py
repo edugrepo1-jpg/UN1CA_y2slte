@@ -50,6 +50,7 @@ def inspect(root, require_cc=False):
     pairs = [('battery,chg_high_temp', 'battery,chg_high_temp_recovery'),
              ('battery,dchg_high_temp', 'battery,dchg_high_temp_recovery'),
              ('battery,dchg_high_batt_temp', 'battery,dchg_high_batt_temp_recovery'),
+             ('battery,mix_high_temp', 'battery,mix_high_temp_recovery'),
              ('battery,swelling_high_temp_block', 'battery,swelling_high_temp_recov')]
     for high, recovery in pairs:
         if len(values[high]) != len(values[recovery]):
@@ -57,6 +58,8 @@ def inspect(root, require_cc=False):
         for h, r in zip(values[high], values[recovery]):
             if (h, r) != (1000, 1000) and not h > r:
                 raise ValueError('Invalid thermal hysteresis: ' + high)
+    if values['battery,chg_float_voltage'][0] > 4380:
+        raise ValueError('Battery voltage exceeds the reviewed r8s 4380 mV target')
     for name in ('battery,dchg_input_limit_current', 'battery,dchg_charging_limit_current',
                  'battery,siop_apdo_charging_limit_current'):
         if values[name][0] <= 0 or values[name][0] > values['battery,max_input_current' if 'input' in name else 'battery,max_charging_current'][0]:
@@ -80,14 +83,18 @@ def inspect(root, require_cc=False):
             continue
         selected[name] = macros[name]
         pending.extend(n for n in re.findall(r'\b(is_\w+)\(', macros[name]) if n != name)
+    # Some cable IDs, notably HV_WIRELESS_ETX=100, are object macros outside
+    # the contiguous enum. Retain their exact definitions in the host harness.
+    cable_defines = '\n'.join(re.findall(r'^#define\s+SEC_BATTERY_CABLE_\w+\s+[^\n]+', common, re.M))
     compiler = shutil.which('cc') or shutil.which('clang') or shutil.which('gcc')
     cases = None
     if compiler:
-        code = ('#include <assert.h>\n#include <stdbool.h>\n#include <stdio.h>\n' + cable_enum + ';\n' +
+        code = ('#include <assert.h>\n#include <stdbool.h>\n#include <stdio.h>\n' + cable_defines + '\n' + cable_enum + ';\n' +
                 '\n'.join(selected.values()) + '\nstruct sec_battery_info {bool charge_max_mode,charging_enabled,store_mode;int cable_type,siop_level;};\n' + helpers + r'''
 int main(void) { int cases=0;
 for(int mode=0;mode<2;mode++)for(int on=0;on<2;on++)for(int store=0;store<2;store++)
-for(int cable=0;cable<SEC_BATTERY_CABLE_MAX;cable++)for(int raw=0;raw<=100;raw++) {
+for(int cable=0;cable<=SEC_BATTERY_CABLE_HV_WIRELESS_ETX;cable++)for(int raw=0;raw<=100;raw++) {
+if(cable>=SEC_BATTERY_CABLE_MAX&&cable!=SEC_BATTERY_CABLE_HV_WIRELESS_ETX)continue;
 struct sec_battery_info b={mode,on,store,cable,raw};
 bool expected=mode&&on&&!store&&is_wired_type(cable);
 assert(sec_bat_charge_max_mode_active(&b)==expected);
