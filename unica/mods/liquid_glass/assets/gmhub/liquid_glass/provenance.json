@@ -1,0 +1,29 @@
+[
+  {
+    "id": "qwea",
+    "repository": "QWEA0/Liquid-Glass-Android",
+    "commit": "16afe4d8b5d08a370d3f8c50b08d7f5c6eb5da4d",
+    "path": "liquidglass/src/main/java/com/example/liquidglass/GlassLensRenderer.kt",
+    "license": "MIT",
+    "source_sha256": "6c1b7cbb1b03e3c82fae96b44e276e0a1fd8bb41a3af2a3af866fbd8eeb6ee60",
+    "shader_sha256": "e82c52c69f8ecabce7c33e71fc8d1cb825ea88d33886ba0f860604316d44703d"
+  },
+  {
+    "id": "kyant",
+    "repository": "Kyant0/AndroidLiquidGlass",
+    "commit": "65ab177e90e5c1d8c62e70cf7755841982da65f6",
+    "path": "backdrop/src/commonMain/kotlin/com/kyant/backdrop/internal/Shaders.kt",
+    "license": "Apache-2.0",
+    "source_sha256": "02ee1305ff175a12c48ec109bcf62f1c92031ee04f6ec98276e67cc43ffe79da",
+    "shader_sha256": "188069019860065adaade28bbffca326c95f27399846733a103c032e0d8e0146"
+  },
+  {
+    "id": "color",
+    "repository": "AYwlilwYA/ColorOS16-LiquidGlass",
+    "commit": "b3757f2542bc680c0b586ef97aa83fc7c268ef5c",
+    "path": "app/src/main/kotlin/com/coloros16/liquidglass/liquidglass/LiquidGlassShader.kt",
+    "license": "GPL-3.0",
+    "source_sha256": "5a96be0b0e9ec6256db49cd4b7be2ad78d3ad03d82e9615d43a1efc4b8e19f52",
+    "shader_sha256": "c5c2a7742a997e8042793c025fdbe0eeda0ef8e619cd4aa7f1e62857549da287"
+  }
+]

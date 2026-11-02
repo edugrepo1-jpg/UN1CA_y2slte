@@ -1,0 +1,6 @@
+{
+  "java_sha256": "40fc52651e3e196805a752d304279293c78526fe1409fcd7226ee5089dd8d3db",
+  "smali_sha256": "11104b6808f502f7ef843f55dfe3fe21ca8d6027a22ee0f6576deed9cf32b2ea",
+  "min_api": 33,
+  "sdk_api": 37
+}

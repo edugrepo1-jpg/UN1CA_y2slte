@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="gm_glass_title">Liquid Glass</string>
+    <string name="gm_glass_home_summary">QWEA, Kyant Backdrop e ColorOS: escolha o motor de vidro</string>
+    <string name="gm_glass_engine_title">Motor de vidro</string>
+    <string name="gm_glass_native">Original da One UI</string>
+    <string name="gm_glass_qwea">QWEA — Liquid Glass Android</string>
+    <string name="gm_glass_kyant">Kyant — Backdrop</string>
+    <string name="gm_glass_color">ColorOS — Liquid Glass</string>
+    <string name="gm_glass_scope_title">Onde o efeito é aplicado</string>
+    <string name="gm_glass_scope_summary">Nesta versão, os três motores atuam no fundo capturado do painel de configurações rápidas. Não alteram o player, os botões ou o painel de notificações. Não substituem ainda o blur de todo o sistema.</string>
+    <string name="gm_glass_apply_title">Aplicação</string>
+    <string name="gm_glass_apply_summary">A escolha é salva e aplicada na próxima captura do fundo ao abrir o painel. Somente um motor funciona por vez. Escolha Original da One UI para restaurar o material nativo.</string>
+    <string name="gm_glass_policy_title">Fluidez e legibilidade</string>
+    <string name="gm_glass_policy_summary">O material original é usado na economia de bateria, com aquecimento elevado, alto contraste, transparência reduzida ou falha do shader. O efeito não faz capturas extras nem mantém animações ou sensores ativos em segundo plano. A fluidez no r8s ainda precisa de teste físico.</string>
+    <string name="gm_glass_qwea_summary">Port do shader SDF com refração, dispersão e reflexos. Usa o fundo já capturado pela Samsung; não instala a central demonstrativa do projeto.</string>
+    <string name="gm_glass_kyant_summary">Port do shader de refração espectral do Backdrop. O adaptador usa a geometria do painel Samsung, sem substituir o SystemUI por uma interface Compose.</string>
+    <string name="gm_glass_color_summary">Port do shader óptico ColorOS com lente interna e realces. Usa o adaptador Samsung, sem depender dos componentes OPPO ou do LSPosed.</string>
+    <string name="gm_glass_save_error">Não foi possível salvar a escolha. O motor anterior foi mantido.</string>
+    <string name="gm_glass_unsupported">Este sistema não oferece os controles necessários para estes motores.</string>
+    <string-array name="gm_glass_engines">
+        <item>@string/gm_glass_native</item>
+        <item>@string/gm_glass_qwea</item>
+        <item>@string/gm_glass_kyant</item>
+        <item>@string/gm_glass_color</item>
+    </string-array>
+    <string-array name="gm_glass_engine_values">
+        <item>0</item><item>1</item><item>2</item><item>3</item>
+    </string-array>
+</resources>
