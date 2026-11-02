@@ -74,6 +74,11 @@ if [ "${#MISSING[@]}" -ne 0 ]; then
 fi
 unset DEPENDENCIES MISSING
 
+if [[ "${TARGET_CODENAME:-}" == r8s && "${SOURCE_PLATFORM_SDK_VERSION:-0}" -ge 37 ]]; then
+    source "$SRC_DIR/scripts/utils/java_utils.sh" || return 1
+    VERIFY_BUILD_JAVA 17 || return 1
+fi
+
 if ! "$SRC_DIR/external/make.sh" --check-tools; then
     LOG_STEP_IN true "Building required tools..."
     "$SRC_DIR/external/make.sh" || return 1

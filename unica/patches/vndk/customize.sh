@@ -194,8 +194,41 @@ PATCH_VNDK_MANIFEST() {
     fi
 }
 
+VALIDATE_TARGET_VENDOR_SDK() {
+    local VENDOR_SDK STOCK_SDK VALUE FILE
+    local STOCK_VENDOR="$FW_DIR/$(tr "/" "_" <<< "$TARGET_FW_SOURCE")/vendor"
+
+    # The vendor partition can remain frozen while Samsung updates the stock
+    # system. r8s FYJ1 has system API33 and vendor API30. Neither the output
+    # framework API37 nor TARGET_PLATFORM_SDK_VERSION describes the vendor ABI.
+    VENDOR_SDK="$(GET_PROP vendor ro.vendor.build.version.sdk)" || return 1
+    STOCK_SDK=""
+    for FILE in "$STOCK_VENDOR/default.prop" "$STOCK_VENDOR/build.prop"; do
+        [ -f "$FILE" ] || continue
+        VALUE="$(GET_PROP "$FILE" ro.vendor.build.version.sdk)" || return 1
+        [ -n "$VALUE" ] || continue
+        if [[ ! "$VALUE" =~ ^[0-9]+$ ]]; then
+            ABORT "Invalid stock vendor SDK in $FILE: $VALUE"
+            return 1
+        fi
+        if [ -n "$STOCK_SDK" ] && [ "$STOCK_SDK" != "$VALUE" ]; then
+            ABORT "Conflicting vendor SDK declarations in target stock firmware"
+            return 1
+        fi
+        STOCK_SDK="$VALUE"
+    done
+    if [[ ! "$VENDOR_SDK" =~ ^[0-9]+$ ]] || [ -z "$STOCK_SDK" ]; then
+        ABORT "Cannot validate target vendor SDK against its stock firmware"
+        return 1
+    fi
+    if [ "$VENDOR_SDK" != "$STOCK_SDK" ]; then
+        ABORT "Vendor SDK $VENDOR_SDK does not match target stock vendor SDK $STOCK_SDK"
+        return 1
+    fi
+}
+
 VALIDATE_LEGACY_VNDK() {
-    local APEX_SIZE VENDOR_SDK VNDK_COUNT
+    local APEX_SIZE VNDK_COUNT
 
     if [ ! -f "$VNDK_APEX" ]; then
         ABORT "VNDK $TARGET_VNDK_VERSION APEX was not installed"
@@ -224,17 +257,15 @@ VALIDATE_LEGACY_VNDK() {
         return 1
     fi
 
-    VENDOR_SDK="$(GET_PROP vendor ro.vendor.build.version.sdk)"
-    if [ -n "$VENDOR_SDK" ] && [ "$VENDOR_SDK" -ne "$TARGET_PLATFORM_SDK_VERSION" ]; then
-        ABORT "Vendor SDK $VENDOR_SDK does not match target platform SDK $TARGET_PLATFORM_SDK_VERSION"
-        return 1
-    fi
+    VALIDATE_TARGET_VENDOR_SDK || return 1
 
     LOG "  - Legacy VNDK $TARGET_VNDK_VERSION compatibility validated ($APEX_SIZE bytes)"
 }
 # ]
 
 if [ "$TARGET_VNDK_VERSION" -le 34 ]; then
+    # Fail on an actual vendor mismatch before rebuilding the VNDK APEX.
+    VALIDATE_TARGET_VENDOR_SDK || return 1
     if [ ! -f "$VNDK_APEX" ] || [ "$SOURCE_BOARD_API_LEVEL" != "$TARGET_VNDK_VERSION" ]; then
         if [ "$SOURCE_BOARD_API_LEVEL" -le 34 ] && \
                 [ -f "$SYS_EXT_DIR/apex/com.android.vndk.v$SOURCE_BOARD_API_LEVEL.apex" ]; then
@@ -278,4 +309,4 @@ fi
 unset TARGET_CORE_VARIANT TARGET_FW_SOURCE TARGET_VNDK_VERSION
 unset SYS_EXT_DIR VINTF_MANIFEST VNDK_APEX VNDK_APEX_REL
 unset -f ADD_TARGET_VNDK_APEX PATCH_VNDK_CGROUP_RUNTIME PATCH_VNDK_MANIFEST \
-    VALIDATE_LEGACY_VNDK
+    VALIDATE_LEGACY_VNDK VALIDATE_TARGET_VENDOR_SDK

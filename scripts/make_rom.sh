@@ -34,7 +34,7 @@ TARGET_FIRMWARE_PATH="$(cut -d "/" -f 1 -s <<< "$TARGET_FIRMWARE")_$(cut -d "/" 
 APK_CACHE_DIR="$OUT_DIR/target/$TARGET_CODENAME/apk_cache"
 APK_DECODE_CACHE_DIR="$OUT_DIR/target/$TARGET_CODENAME/apk_decode_cache"
 APK_BUILD_LIST="$OUT_DIR/target/$TARGET_CODENAME/tmp/apk-cache-build.list"
-APK_CACHE_FORMAT="unica-apk-cache-v2"
+APK_CACHE_FORMAT="unica-apk-cache-v3"
 INCREMENTAL_DIR="$OUT_DIR/target/$TARGET_CODENAME/incremental"
 INCREMENTAL_BASE="$INCREMENTAL_DIR/base-target-files.zip"
 INCREMENTAL_TARGET="$INCREMENTAL_DIR/target-files.zip"
@@ -95,11 +95,12 @@ RESTORE_APK_CACHE()
     local DECODED_PATH
     local RELATIVE_PATH
     local OUTPUT_FILE
+    local ARTIFACT_HASH CACHED_ARTIFACT_HASH
     local HIT_COUNT="0"
     local MISS_COUNT="0"
 
-    mkdir -p "$(dirname "$APK_BUILD_LIST")"
-    : > "$APK_BUILD_LIST"
+    mkdir -p "$(dirname "$APK_BUILD_LIST")" || return 1
+    : > "$APK_BUILD_LIST" || return 1
 
     while IFS= read -r -d '' f; do
         DECODED_PATH="$f"
@@ -108,13 +109,18 @@ RESTORE_APK_CACHE()
         CURRENT_HASH="$(GET_PATCHED_APK_HASH "$DECODED_PATH" "$RELATIVE_PATH")" || return 1
         CACHE_HASH="$(cat "$APK_CACHE_DIR/hashes/$RELATIVE_PATH" 2> /dev/null || true)"
 
-        if [ "$CACHE_HASH" = "$CURRENT_HASH" ] && \
-                [ -f "$APK_CACHE_DIR/files/$RELATIVE_PATH" ]; then
-            mkdir -p "$(dirname "$OUTPUT_FILE")"
-            cp -a --reflink=auto "$APK_CACHE_DIR/files/$RELATIVE_PATH" "$OUTPUT_FILE"
+        CACHED_ARTIFACT_HASH="$(cat "$APK_CACHE_DIR/artifact_hashes/$RELATIVE_PATH" 2> /dev/null || true)"
+        ARTIFACT_HASH=""
+        if [ "$CACHE_HASH" = "$CURRENT_HASH" ] && [ -s "$APK_CACHE_DIR/files/$RELATIVE_PATH" ]; then
+            ARTIFACT_HASH="$(sha256sum "$APK_CACHE_DIR/files/$RELATIVE_PATH")" || return 1
+            ARTIFACT_HASH="${ARTIFACT_HASH%% *}"
+        fi
+        if [ -n "$ARTIFACT_HASH" ] && [ "$ARTIFACT_HASH" = "$CACHED_ARTIFACT_HASH" ]; then
+            mkdir -p "$(dirname "$OUTPUT_FILE")" || return 1
+            cp -a --reflink=auto "$APK_CACHE_DIR/files/$RELATIVE_PATH" "$OUTPUT_FILE" || return 1
             HIT_COUNT=$((HIT_COUNT + 1))
         else
-            printf '%s\0' "$DECODED_PATH" >> "$APK_BUILD_LIST"
+            printf '%s\0' "$DECODED_PATH" >> "$APK_BUILD_LIST" || return 1
             MISS_COUNT=$((MISS_COUNT + 1))
         fi
     done < <(find "$APKTOOL_DIR" -type d \( -name "*.apk" -o -name "*.jar" \) -print0)
@@ -130,27 +136,47 @@ UPDATE_APK_CACHE()
     local FILE_HASH
     local RELATIVE_PATH
     local OUTPUT_FILE
+    local ARTIFACT_HASH CACHE_PREVIOUS
 
     [ -d "$APKTOOL_DIR" ] || return 0
     CACHE_TMP="$APK_CACHE_DIR.tmp.$$"
-    rm -rf "$CACHE_TMP"
-    mkdir -p "$CACHE_TMP/files" "$CACHE_TMP/hashes"
+    rm -rf "$CACHE_TMP" || return 1
+    mkdir -p "$CACHE_TMP/files" "$CACHE_TMP/hashes" "$CACHE_TMP/artifact_hashes" || return 1
 
     while IFS= read -r -d '' f; do
         DECODED_PATH="$f"
         RELATIVE_PATH="${f/$APKTOOL_DIR\//}"
         OUTPUT_FILE="$(GET_BUILT_APK_PATH "$RELATIVE_PATH")"
-        [ -f "$OUTPUT_FILE" ] || return 1
+        [ -s "$OUTPUT_FILE" ] || return 1
         FILE_HASH="$(GET_PATCHED_APK_HASH "$DECODED_PATH" "$RELATIVE_PATH")" || return 1
         mkdir -p "$CACHE_TMP/files/$(dirname "$RELATIVE_PATH")" \
-            "$CACHE_TMP/hashes/$(dirname "$RELATIVE_PATH")"
-        cp -a --reflink=auto "$OUTPUT_FILE" "$CACHE_TMP/files/$RELATIVE_PATH"
-        printf '%s' "$FILE_HASH" > "$CACHE_TMP/hashes/$RELATIVE_PATH"
+            "$CACHE_TMP/hashes/$(dirname "$RELATIVE_PATH")" \
+            "$CACHE_TMP/artifact_hashes/$(dirname "$RELATIVE_PATH")" || return 1
+        cp -a --reflink=auto "$OUTPUT_FILE" "$CACHE_TMP/files/$RELATIVE_PATH" || return 1
+        ARTIFACT_HASH="$(sha256sum "$CACHE_TMP/files/$RELATIVE_PATH")" || return 1
+        ARTIFACT_HASH="${ARTIFACT_HASH%% *}"
+        printf '%s' "$FILE_HASH" > "$CACHE_TMP/hashes/$RELATIVE_PATH" || return 1
+        printf '%s' "$ARTIFACT_HASH" > "$CACHE_TMP/artifact_hashes/$RELATIVE_PATH" || return 1
     done < <(find "$APKTOOL_DIR" -type d \( -name "*.apk" -o -name "*.jar" \) -print0)
 
-    printf '%s' "$APK_CACHE_FORMAT" > "$CACHE_TMP/.format"
-    rm -rf "$APK_CACHE_DIR"
-    mv "$CACHE_TMP" "$APK_CACHE_DIR"
+    printf '%s' "$APK_CACHE_FORMAT" > "$CACHE_TMP/.format" || return 1
+    CACHE_PREVIOUS="$APK_CACHE_DIR.previous.$$"
+    if [ -e "$CACHE_PREVIOUS" ]; then
+        LOGE "Previous APK cache transaction still exists: $CACHE_PREVIOUS"
+        return 1
+    fi
+    if [ -d "$APK_CACHE_DIR" ]; then
+        mv "$APK_CACHE_DIR" "$CACHE_PREVIOUS" || return 1
+    fi
+    if ! mv "$CACHE_TMP" "$APK_CACHE_DIR"; then
+        if [ -d "$CACHE_PREVIOUS" ]; then
+            mv "$CACHE_PREVIOUS" "$APK_CACHE_DIR" || LOGE "Could not restore previous APK cache"
+        fi
+        return 1
+    fi
+    if [ -d "$CACHE_PREVIOUS" ]; then
+        rm -rf "$CACHE_PREVIOUS" || return 1
+    fi
     LOG "- Updated per-file APK/JAR cache"
 }
 

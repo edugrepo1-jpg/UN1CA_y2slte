@@ -538,8 +538,24 @@ GET_PROP()
     _CHECK_NON_EMPTY_PARAM "PROP" "$1" || return 1
 
     local PROP="$1"
-    # shellcheck disable=SC2086
-    cat $FILES 2> /dev/null | sed -n "s/^$PROP=//p" | head -n 1
+    local FILE
+    local EXISTING_FILES=()
+    while IFS= read -r FILE; do
+        [ -f "$FILE" ] && EXISTING_FILES+=("$FILE")
+    done <<< "$FILES"
+    [ "${#EXISTING_FILES[@]}" -gt 0 ] || return 0
+
+    # Missing optional property files are normal for merged/legacy partitions.
+    # A single literal-key reader avoids cat's missing-file error, head/SIGPIPE
+    # under pipefail, regex dots in keys, and splitting paths containing spaces.
+    awk -v key="$PROP" '
+        substr($0, 1, length(key) + 1) == key "=" {
+            value = substr($0, length(key) + 2)
+            sub(/\r$/, "", value)
+            print value
+            exit
+        }
+    ' "${EXISTING_FILES[@]}"
 }
 
 # IS_SPARSE_IMAGE <file>

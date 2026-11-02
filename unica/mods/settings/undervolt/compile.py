@@ -14,6 +14,11 @@ def compile_sources(root, sdk, java_home, apktool):
     java=str(java_home/'bin'/('java'+exe))
     javac=str(java_home/'bin'/('javac'+exe))
     android=sdk/'platforms/android-37.0/android.jar'
+    if not android.is_file():
+        android=sdk/'platforms/android-37/android.jar'
+    for path in (Path(java),Path(javac),android,apktool,sdk/'build-tools/36.0.0/lib/d8.jar'):
+        if not path.is_file():
+            raise FileNotFoundError('Missing SDK37/JDK/build tool input: '+str(path))
     sources=sorted((root/'src').rglob('*.java'))
     with tempfile.TemporaryDirectory(prefix='gmhub-uv-') as d:
         tmp=Path(d);classes=tmp/'classes';classes.mkdir()
