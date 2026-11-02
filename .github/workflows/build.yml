@@ -129,6 +129,17 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
+      - name: Cache exact GMKernel compiler
+        if: matrix.target == 'r8s'
+        uses: actions/cache@v4
+        with:
+          path: out/toolchains/clang_14
+          key: gmkernel-ubuntu24-clang-r450784d-dc339a8e5a421a55f458674981fdce18a451f298-v1
+
+      - name: Verify exact GMKernel compiler before firmware downloads
+        if: matrix.target == 'r8s'
+        run: bash scripts/internal/prepare_gmkernel_toolchain.sh "$GITHUB_WORKSPACE/out/toolchains/clang_14"
+
       - name: Build dependencies
         run: |
           source ./buildenv.sh ${{ matrix.target }}

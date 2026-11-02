@@ -3,7 +3,7 @@ EXTREMEKRNL_REPO="https://github.com/At30c/SSM_990v2BYEXTREME/"
 # r8s uses the user's full GMKernel source; all other targets retain Extreme.
 GMKERNEL_REPO="https://github.com/edugrepo1-jpg/android_kernel_samsung_exynos990.git"
 GMKERNEL_BRANCH="gmkernel-android17-r8s-20261101"
-GMKERNEL_SHA="0ac4cc0d535e67fd0ab6a822f303acef1377300f"
+GMKERNEL_SHA="52569b5093164b404251a898bfcb9e486193755c"
 if [[ "$TARGET_CODENAME" == "r8s" ]]; then
     EXTREMEKRNL_REPO="$GMKERNEL_REPO"
 fi
@@ -45,6 +45,9 @@ GET_KERNEL_CACHE_KEY()
         git -C "$KERNEL_TMP_DIR" submodule status --recursive
         printf 'patchset=%s\n' "$(GET_KERNEL_PATCHSET_DIGEST)"
         printf 'integration=%s\n' "$(GET_FILE_SHA256 "$MODPATH/customize.sh")"
+        if [[ "$TARGET_CODENAME" == "r8s" ]]; then
+            printf 'compiler-preparation=%s\n' "$(GET_FILE_SHA256 "$SRC_DIR/scripts/internal/prepare_gmkernel_toolchain.sh")"
+        fi
         printf 'main: model=%s ksu=y recovery=n\n' "$KERNEL_MODEL"
         if [[ "$TARGET_CODENAME" != "r8s" ]] && [[ "$TARGET_CODENAME" != "z3s" ]]; then
             printf 'main: model=%s ksu=n recovery=n dt_overlay=y\n' "${TARGET_CODENAME}lte"
@@ -153,6 +156,27 @@ KERNEL_CACHE_IS_VALID()
     return 0
 }
 
+PREPARE_KERNEL_COMPILER()
+{
+    [[ "$TARGET_CODENAME" == "r8s" ]] || return 0
+    local COMPILER="$OUT_DIR/toolchains/clang_14"
+    local KERNEL_COMPILER="$KERNEL_TMP_DIR/toolchain/clang_14"
+    local BACKUP=""
+    bash "$SRC_DIR/scripts/internal/prepare_gmkernel_toolchain.sh" "$COMPILER" || return 1
+    mkdir -p "$KERNEL_TMP_DIR/toolchain" || return 1
+    if [[ "$(readlink -f "$KERNEL_COMPILER")" == "$(readlink -f "$COMPILER")" ]]; then
+        return 0
+    fi
+    if [ -e "$KERNEL_COMPILER" ] || [ -L "$KERNEL_COMPILER" ]; then
+        BACKUP="$(mktemp -d "$KERNEL_TMP_DIR/toolchain/.previous-clang.XXXXXXXX")" || return 1
+        mv -- "$KERNEL_COMPILER" "$BACKUP/clang_14" || return 1
+    fi
+    if ! ln -s "$COMPILER" "$KERNEL_COMPILER"; then
+        [ -z "$BACKUP" ] || mv -- "$BACKUP/clang_14" "$KERNEL_COMPILER"
+        return 1
+    fi
+}
+
 BUILD_KERNEL()
 {
     local BOOT_IMAGE="$KERNEL_TMP_DIR/build/out/$KERNEL_MODEL/boot.img"
@@ -163,6 +187,7 @@ BUILD_KERNEL()
     local PARENT
     PARENT="$(pwd)"
 
+    PREPARE_KERNEL_COMPILER || return 1
     CLEAN_KERNEL_BUILD_OUTPUTS || return 1
     touch "$BUILD_MARKER" || return 1
     cd "$KERNEL_TMP_DIR" || return 1
@@ -170,7 +195,9 @@ BUILD_KERNEL()
     # Kernel builds are long-running and their output is needed to diagnose
     # compiler failures. Do not hide it inside EVAL's command substitution.
     LOG "- Building kernel for ${TARGET_CODENAME}"
-    if ! ./build.sh -m "$KERNEL_MODEL" -k y -r n; then
+    mkdir -p "$OUT_DIR/target/$TARGET_CODENAME" || return 1
+    if ! (set -o pipefail; ./build.sh -m "$KERNEL_MODEL" -k y -r n 2>&1 |
+            tee "$OUT_DIR/target/$TARGET_CODENAME/gmkernel-build.log"); then
         cd "$PARENT" || return 1
         rm -f -- "$BUILD_MARKER"
         return 1

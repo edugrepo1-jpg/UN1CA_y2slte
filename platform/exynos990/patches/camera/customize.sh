@@ -12,7 +12,11 @@ system/lib64/libDualCamBokehCapture.camera.samsung.so
 "
 for blob in $BLOBS_LIST
 do
-    DELETE_FROM_WORK_DIR "system" "$blob" &
+    # These optional donor implementations moved or disappeared on One UI 9.
+    # Remove an existing legacy file without reporting an absent file as a fault.
+    if [ -e "$WORK_DIR/system/$blob" ]; then
+        DELETE_FROM_WORK_DIR "system" "$blob" &
+    fi
 done
 
 # shellcheck disable=SC2046

@@ -31,7 +31,7 @@ class OneUI9BuildContracts(unittest.TestCase):
     def test_gmkernel_and_android17_backports(self):
         shell = contents("platform/exynos990/patches/extremekrnl/customize.sh")
         self.assertIn('GMKERNEL_BRANCH="gmkernel-android17-r8s-20261101"', shell)
-        self.assertIn('GMKERNEL_SHA="0ac4cc0d535e67fd0ab6a822f303acef1377300f"', shell)
+        self.assertIn('GMKERNEL_SHA="52569b5093164b404251a898bfcb9e486193755c"', shell)
         self.assertIn("edugrepo1-jpg/android_kernel_samsung_exynos990.git", shell)
         self.assertIn("GMKernel r8s DTBO", shell)
         self.assertIn("APPLY_KERNEL_PATCHES", shell)

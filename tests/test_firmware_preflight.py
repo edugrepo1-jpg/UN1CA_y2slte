@@ -189,11 +189,28 @@ class AuditCollectorTests(unittest.TestCase):
             firmware.mkdir()
             original = firmware / 'framework.jar'
             original.write_bytes(b'exact input bytes')
-            with patch.object(self.module.subprocess, 'run', side_effect=RuntimeError('decoder failure')):
+            with patch.object(self.module.subprocess, 'run', side_effect=RuntimeError('decoder failure')) as decoder:
                 with self.assertRaisesRegex(RuntimeError, 'decoder failure'):
                     self.module.collect(firmware, top / 'apktool.jar', top / 'out')
+            self.assertIn('--no-debug-info', decoder.call_args.args[0])
             with zipfile.ZipFile(top / 'out/framework.zip') as package:
                 self.assertEqual(package.read('originals/framework.jar'), original.read_bytes())
+            self.assertTrue((top / 'out/manifest.json').is_file())
+
+    def test_supplemental_failure_retains_original_without_redecoding_main_apps(self):
+        with tempfile.TemporaryDirectory() as temp:
+            top = Path(temp)
+            firmware = top / 'fw'
+            firmware.mkdir()
+            original = firmware / 'gamemanager.jar'
+            original.write_bytes(b'exact auxiliary input')
+            with patch.object(self.module.subprocess, 'run', side_effect=RuntimeError('decoder failure')) as decoder:
+                with self.assertRaisesRegex(RuntimeError, 'decoder failure'):
+                    self.module.collect_supplemental(firmware, top / 'apktool.jar', top / 'out')
+            self.assertIn('--no-debug-info', decoder.call_args.args[0])
+            with zipfile.ZipFile(top / 'out/aux-framework.zip') as package:
+                self.assertEqual(package.read('originals/gamemanager.jar'), original.read_bytes())
+            self.assertFalse((top / 'out/framework.zip').exists())
             self.assertTrue((top / 'out/manifest.json').is_file())
 
     def test_duplicate_apk_is_not_silently_selected(self):

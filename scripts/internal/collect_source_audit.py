@@ -20,6 +20,11 @@ PACKAGES = {
     'settings': ('SecSettings.apk',),
     'biometric': ('BiometricSetting.apk',),
 }
+SUPPLEMENTAL_PACKAGES = {
+    'aux-framework': ('gamemanager.jar', 'secinputdev-service.jar', 'ssrm.jar'),
+    'aux-settings': ('SettingsProvider.apk', 'SecSettingsIntelligence.apk'),
+    'aux-health-ese': ('SamsungDeviceHealthManagerService.apk', 'SecureElement.apk'),
+}
 
 
 def digest(path):
@@ -71,7 +76,7 @@ def collect(root, tool, output):
                                       'size': path.stat().st_size})
             entries.append((path, 'originals/' + relative))
             decoded = output / 'decoded' / group / name
-            command = ['java', '-Xmx3072m', '-jar', str(tool), 'd', '-f', '-r',
+            command = ['java', '-Xmx3072m', '-jar', str(tool), 'd', '-f', '-r', '--no-debug-info',
                        '-j', '1', '-o', str(decoded), str(path)]
             print(f'Decoding exact source {relative}', flush=True)
             try:
@@ -131,10 +136,58 @@ def collect(root, tool, output):
     print('Exact inputs collected; no ROM or kernel build was started.', flush=True)
 
 
+def collect_supplemental(root, tool, output, target=None):
+    """Collect concrete remaining gaps without decoding the five retained apps again."""
+    output.mkdir(parents=True, exist_ok=True)
+    metadata = {'source': str(root.name), 'scope': 'supplemental exact inputs', 'files': []}
+    for group, names in SUPPLEMENTAL_PACKAGES.items():
+        entries = []
+        try:
+            for name in names:
+                path = find_unique(root, name)
+                relative = path.relative_to(root).as_posix()
+                metadata['files'].append({'path': relative, 'sha256': digest(path),
+                                          'size': path.stat().st_size})
+                entries.append((path, 'originals/' + relative))
+                decoded = output / 'decoded' / group / name
+                print('Decoding remaining input ' + relative, flush=True)
+                try:
+                    subprocess.run(['java', '-Xmx3072m', '-jar', str(tool), 'd', '-f', '-r',
+                                    '--no-debug-info', '-j', '1', '-o', str(decoded), str(path)], check=True)
+                finally:
+                    entries.extend((p, 'decoded/' + name + '/' + p.relative_to(decoded).as_posix())
+                                   for p in sorted(decoded.rglob('*')) if p.is_file())
+                if not any(decoded.glob('smali*/**/*.smali')):
+                    raise ValueError('No classes decoded from ' + relative)
+        finally:
+            archive(output / (group + '.zip'), entries)
+            (output / 'manifest.json').write_text(json.dumps(metadata, indent=2) + '\n')
+    resources = find_unique(root, 'framework-res.apk')
+    archive(output / 'aux-resources.zip', [(resources, 'originals/' + resources.relative_to(root).as_posix())])
+    native = [(p, p.relative_to(root).as_posix()) for p in root.rglob('*')
+              if p.is_file() and p.name in {'libstagefright.so', 'libexynosdisplay.so'}]
+    archive(output / 'aux-native.zip', native)
+    if target is not None:
+        timestamp = target / 'vendor/lib/libstagefright_bufferqueue_helper_vendor.so'
+        if not timestamp.is_file():
+            raise ValueError('Pinned r8s vendor recording library is absent')
+        entries = [(timestamp, timestamp.relative_to(target).as_posix())]
+        metadata['target_recording_library'] = {'sha256': digest(timestamp), 'size': timestamp.stat().st_size}
+        archive(output / 'aux-target.zip', entries)
+    (output / 'manifest.json').write_text(json.dumps(metadata, indent=2) + '\n')
+    print('Supplemental inputs collected; no ROM or kernel build started.', flush=True)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--firmware', type=Path, required=True)
     parser.add_argument('--apktool', type=Path, required=True)
     parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--supplemental', action='store_true')
+    parser.add_argument('--target-firmware', type=Path)
     args = parser.parse_args()
-    collect(args.firmware.resolve(), args.apktool.resolve(), args.out.resolve())
+    if args.supplemental:
+        collect_supplemental(args.firmware.resolve(), args.apktool.resolve(), args.out.resolve(),
+                             args.target_firmware.resolve() if args.target_firmware else None)
+    else:
+        collect(args.firmware.resolve(), args.apktool.resolve(), args.out.resolve())

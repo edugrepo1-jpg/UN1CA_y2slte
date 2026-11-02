@@ -5,6 +5,11 @@ on:
     branches: [gmhub-oneui9-r8s-20261101]
     paths: ['.github/gmhub-audit-trigger.txt']
   workflow_dispatch:
+    inputs:
+      supplemental:
+        description: Inspect only the remaining auxiliary packages and pinned r8s recording library
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -30,6 +35,16 @@ jobs:
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           sudo docker image prune --all --force
           df -h .
+      - name: Select inspection scope
+        id: scope
+        env:
+          REQUESTED_SUPPLEMENTAL: ${{ inputs.supplemental || false }}
+        run: |
+          if [ "$REQUESTED_SUPPLEMENTAL" = true ] || grep -Fxq supplemental .github/gmhub-audit-trigger.txt; then
+            echo 'supplemental=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'supplemental=false' >> "$GITHUB_OUTPUT"
+          fi
       - name: Install extraction and tool dependencies
         run: |
           sudo apt-get update
@@ -61,6 +76,15 @@ jobs:
           git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
           source ./buildenv.sh r8s
           ./scripts/build_dependencies.sh
+      - name: Cache exact GMKernel compiler for Linux verification
+        if: steps.scope.outputs.supplemental == 'true'
+        uses: actions/cache@v4
+        with:
+          path: out/toolchains/clang_14
+          key: gmkernel-ubuntu24-clang-r450784d-dc339a8e5a421a55f458674981fdce18a451f298-v1
+      - name: Verify compiler bootstrap without building the kernel
+        if: steps.scope.outputs.supplemental == 'true'
+        run: bash scripts/internal/prepare_gmkernel_toolchain.sh "$GITHUB_WORKSPACE/out/toolchains/clang_14"
       - name: Obtain only the pinned Android 17 source
         run: |
           set -eo pipefail
@@ -72,12 +96,43 @@ jobs:
           EXPECTED=$(cut -d/ -f1 <<< "$SOURCE_FIRMWARE_VERSION")
           grep -Fxq "ro.build.version.incremental=$EXPECTED" "$SOURCE_DIR/system/system/build.prop"
       - name: Decode exact input packages and retain native runtime containers
+        if: steps.scope.outputs.supplemental != 'true'
         run: |
           source ./buildenv.sh r8s
           SOURCE_DIR="$FW_DIR/$(cut -d/ -f1,2 <<< "$SOURCE_FIRMWARE" | tr / _)"
           python3 scripts/internal/collect_source_audit.py \
             --firmware "$SOURCE_DIR" --apktool "$TOOLS_DIR/bin/apktool.jar" \
             --out out/source-audit
+      - name: Obtain pinned r8s input for recording-library inspection
+        if: steps.scope.outputs.supplemental == 'true'
+        run: |
+          set -eo pipefail
+          source ./buildenv.sh r8s
+          ./scripts/download_fw.sh --ignore-source
+          ./scripts/extract_fw.sh --ignore-source
+          TARGET_DIR="$FW_DIR/$(cut -d/ -f1,2 <<< "$TARGET_FIRMWARE" | tr / _)"
+          EXPECTED=$(cut -d/ -f1 <<< "$TARGET_FIRMWARE_VERSION")
+          grep -Fxq "ro.build.version.incremental=$EXPECTED" "$TARGET_DIR/system/system/build.prop"
+      - name: Inspect remaining packages without repeating retained package decoding
+        if: steps.scope.outputs.supplemental == 'true'
+        run: |
+          set -eo pipefail
+          source ./buildenv.sh r8s
+          SOURCE_DIR="$FW_DIR/$(cut -d/ -f1,2 <<< "$SOURCE_FIRMWARE" | tr / _)"
+          TARGET_DIR="$FW_DIR/$(cut -d/ -f1,2 <<< "$TARGET_FIRMWARE" | tr / _)"
+          python3 scripts/internal/collect_source_audit.py --supplemental \
+            --firmware "$SOURCE_DIR" --target-firmware "$TARGET_DIR" \
+            --apktool "$TOOLS_DIR/bin/apktool.jar" --out out/source-audit
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.scope.outputs.supplemental == 'true'
+        with:
+          name: exact-api37-auxiliary-${{ github.run_id }}
+          path: |
+            out/source-audit/aux-*.zip
+            out/source-audit/manifest.json
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 0
       - uses: actions/upload-artifact@v4
         if: always()
         with:
