@@ -42,3 +42,6 @@ Carry all preflight fixes in ONE pinned build:
 - Source contracts run all r8s feature tests and Python/shell compilation
   checks before the costly donor extraction and full APK/ROM packaging.
 - Keep the exact GMKernel/KSU pin and do not publish an unverified release.
+
+Revision: diagnostic build 6, 2026-11-02.
+Trigger requested full GM HUB One UI 9 r8s compile on GitHub Actions; no release publication.
