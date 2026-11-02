@@ -1,0 +1,56 @@
+{
+  "api": 37,
+  "source_firmware": "S926BXXSIEZJ1",
+  "installation_status": "staged_not_installed",
+  "classes": {
+    "com/android/systemui/samsung/quicksetting/ui/SecQuickSettingScene": {
+      "fields": ["viewModel:Lcom/android/systemui/samsung/quicksetting/ui/panel/QuickSettingSceneViewModel;", "qsAdapter:Lcom/android/systemui/samsung/quicksetting/SecQSPanelComposeAdapter;"],
+      "methods": []
+    },
+    "com/android/systemui/samsung/quicksetting/ui/panel/QuickSettingSceneViewModel": {
+      "fields": ["qsHost:Lcom/android/systemui/qs/QSHost;", "$$delegate_2:Lcom/android/systemui/samsung/quicksetting/ui/panel/PanelItemStoreImpl;", "$$delegate_3:Lcom/android/systemui/samsung/quicksetting/ui/panel/AvailableGridTilesViewModelImpl;", "keyguardStateController:Lcom/android/systemui/statusbar/policy/KeyguardStateController;"],
+      "methods": ["collapse()V", "launchEditMode()V", "launchPowerMenu()V", "launchSettings()V", "setOtherComponentDragging(Z)V"]
+    },
+    "com/android/systemui/samsung/quicksetting/ui/panel/PanelItemStoreImpl": {
+      "fields": ["qsPanelItems:Lkotlinx/coroutines/flow/ReadonlyStateFlow;"], "methods": []
+    },
+    "com/android/systemui/samsung/quicksetting/ui/panel/AvailableGridTilesViewModelImpl": {
+      "fields": ["allTiles:Lkotlinx/coroutines/flow/ReadonlyStateFlow;"], "methods": []
+    },
+    "com/android/systemui/samsung/quicksetting/domain/model/QSPanelItem": {
+      "fields": ["gridTileItem:Lcom/android/systemui/samsung/quicksetting/domain/model/items/GridTileItem;"],
+      "methods": ["getSpanX()I", "getSpanY()I", "getSpanWidth()I", "getSpanHeight()I"]
+    },
+    "com/android/systemui/samsung/quicksetting/domain/model/items/GridTileItem": {
+      "fields": [],
+      "methods": ["getUniqueKey()Ljava/lang/String;", "getType()Ljava/lang/String;", "isResizeEnabled()Z", "resizeConstraints(IIZZ)Lcom/android/systemui/samsung/quicksetting/domain/model/SpanSizeConstraints;"]
+    },
+    "com/android/systemui/samsung/quicksetting/domain/model/SpanSizeConstraints": {
+      "fields": ["min:J", "max:J"], "methods": []
+    },
+    "com/android/systemui/statusbar/policy/KeyguardStateController": {
+      "fields": [], "methods": ["isUnlocked()Z", "isVisible()Z"]
+    },
+    "kotlinx/coroutines/flow/ReadonlyStateFlow": {
+      "fields": [], "methods": ["getValue()Ljava/lang/Object;"]
+    },
+    "com/android/systemui/qs/QSHost": {
+      "fields": [],
+      "methods": ["getTiles()Ljava/util/Collection;", "getUserId()I", "getUserContext()Landroid/content/Context;", "getSpecs()Ljava/util/List;", "getDefaultTileList()Ljava/util/List;", "createTile(Ljava/lang/String;)Lcom/android/systemui/plugins/qs/QSTile;", "isAvailableCustomTile(Ljava/lang/String;)Z", "isUnsupportedTile(Ljava/lang/String;)Z", "shouldBeHiddenByKnox(Ljava/lang/String;)Z", "shouldUnavailableByKnox(Ljava/lang/String;)Z", "addCallback(Lcom/android/systemui/qs/QSHost$Callback;)V", "removeCallback(Lcom/android/systemui/qs/QSHost$Callback;)V"]
+    },
+    "com/android/systemui/qs/QSHost$Callback": {
+      "fields": [], "methods": ["onTilesChanged()V"]
+    },
+    "com/android/systemui/plugins/qs/QSTile": {
+      "fields": [],
+      "methods": ["getTileSpec()Ljava/lang/String;", "setTileSpec(Ljava/lang/String;)V", "getState()Lcom/android/systemui/plugins/qs/QSTile$State;", "isAvailable()Z", "isDestroyed()Z", "click(Lcom/android/systemui/animation/Expandable;)V", "longClick(Lcom/android/systemui/animation/Expandable;)V", "destroy()V", "refreshState()V", "addCallback(Lcom/android/systemui/plugins/qs/QSTile$Callback;)V", "removeCallback(Lcom/android/systemui/plugins/qs/QSTile$Callback;)V", "setListening(Ljava/lang/Object;Z)V"]
+    },
+    "com/android/systemui/plugins/qs/QSTile$Callback": {
+      "fields": [], "methods": ["onStateChanged(Lcom/android/systemui/plugins/qs/QSTile$State;)V"]
+    },
+    "com/android/systemui/plugins/qs/QSTile$State": {
+      "fields": ["label:Ljava/lang/CharSequence;", "secondaryLabel:Ljava/lang/CharSequence;", "contentDescription:Ljava/lang/CharSequence;", "state:I", "disabledByPolicy:Z", "icon:Lcom/android/systemui/plugins/qs/QSTile$Icon;", "iconSupplier:Ljava/util/function/Supplier;"],
+      "methods": []
+    }
+  }
+}

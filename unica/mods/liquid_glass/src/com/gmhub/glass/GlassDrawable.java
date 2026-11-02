@@ -50,8 +50,12 @@ public final class GlassDrawable extends BitmapDrawable {
 
     /** Failure returns the original already-blurred drawable, never a raw frame. */
     public static BitmapDrawable wrap(Context c, Bitmap raw, BitmapDrawable original, String scene) {
-        if (!"QUICK_PANEL".equals(scene) || original == null || raw == null
-                || raw.isRecycled() || Build.VERSION.SDK_INT < 33) return original;
+        if (!"QUICK_PANEL".equals(scene) || original == null || Build.VERSION.SDK_INT < 33)
+            return original;
+        // Check capture dimensions before creating a shader/texture, not just
+        // the output view in draw(). A small view can reference a huge capture.
+        // Keeping Samsung's existing blurred drawable needs no new allocation.
+        if (!usable(raw) || !usable(original.getBitmap())) return original;
         int e = selected(c);
         if (e == 0 || BROKEN[e] || !policyAllows(c)) return original;
         try {
@@ -60,6 +64,11 @@ public final class GlassDrawable extends BitmapDrawable {
             fail(e, ex);
             return original;
         }
+    }
+
+    private static boolean usable(Bitmap bitmap) {
+        return bitmap != null && !bitmap.isRecycled() && bitmap.getWidth() >= 4
+            && bitmap.getHeight() >= 4 && (long) bitmap.getWidth() * bitmap.getHeight() <= MAX_PIXELS;
     }
 
     private static int selected(Context c) {
@@ -178,7 +187,7 @@ public final class GlassDrawable extends BitmapDrawable {
 
     @Override public void draw(Canvas canvas) {
         Rect b = getBounds();
-        if (b.isEmpty()) return;
+        if (b.isEmpty() || getAlpha() == 0) return;
         fallback.setBounds(b);
         long now = SystemClock.uptimeMillis();
         // At most once per second WHILE drawn; no timer, observer or idle work.
