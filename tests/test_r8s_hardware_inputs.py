@@ -62,6 +62,38 @@ class HardwareInputTests(unittest.TestCase):
     def test_unrelated_app_permission_templates_do_not_invalidate_hardware_inventory(self):
         self.run_case(lambda stock, final: (stock / 'vendor/etc/permissions/privapp-placeholder.xml').write_text(''))
 
+    def test_lost_strongbox_instance_does_not_pass_with_default_keymaster(self):
+        def change(stock, final):
+            for root, names in ((stock, ('default', 'strongbox')), (final, ('default',))):
+                (root / 'vendor/etc/vintf/manifest/security.xml').parent.mkdir(exist_ok=True)
+                (root / 'vendor/etc/vintf/manifest/security.xml').write_text(
+                    '<manifest><hal><name>android.hardware.keymaster</name>'
+                    + ''.join(f'<fqname>@4.0::IKeymasterDevice/{name}</fqname>' for name in names)
+                    + '</hal></manifest>')
+        with self.assertRaisesRegex(ValueError, 'HAL instances missing.*strongbox'):
+            self.run_case(change)
+
+    def test_radio_version_upgrade_preserves_both_slots(self):
+        def change(stock, final):
+            for root, version in ((stock, '1.4'), (final, '1.5')):
+                (root / 'vendor/etc/vintf/manifest/radio.xml').parent.mkdir(exist_ok=True)
+                (root / 'vendor/etc/vintf/manifest/radio.xml').write_text(
+                    '<manifest><hal><name>android.hardware.radio</name>'
+                    + ''.join(f'<fqname>@{version}::IRadio/{slot}</fqname>' for slot in ('slot1', 'slot2'))
+                    + '</hal></manifest>')
+        self.assertGreater(self.run_case(change)['stock_hal_instances_preserved'], 1)
+
+    def test_lost_second_sim_slot_is_detected(self):
+        def change(stock, final):
+            for root, names in ((stock, ('slot1', 'slot2')), (final, ('slot1',))):
+                (root / 'vendor/etc/vintf/manifest/radio.xml').parent.mkdir(exist_ok=True)
+                (root / 'vendor/etc/vintf/manifest/radio.xml').write_text(
+                    '<manifest><hal><name>android.hardware.radio</name><interface><name>IRadio</name>'
+                    + ''.join(f'<instance>{name}</instance>' for name in names)
+                    + '</interface></hal></manifest>')
+        with self.assertRaisesRegex(ValueError, 'HAL instances missing.*slot2'):
+            self.run_case(change)
+
     def test_check_runs_after_rom_mods_before_package_compilation(self):
         source = (ROOT / 'scripts/make_rom.sh').read_text(encoding='utf-8')
         self.assertGreater(source.index('target/r8s/validate_hardware_inputs.py'), source.index('"Applying ROM mods"'))

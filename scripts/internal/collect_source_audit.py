@@ -48,6 +48,15 @@ def archive(destination, entries):
 def collect(root, tool, output):
     output.mkdir(parents=True, exist_ok=True)
     metadata = {'source': str(root.name), 'files': []}
+    # Optical FOD needs both Java capability handling and native buffer usage.
+    # Retain exact code bytes for allocator/BLAST review, never old API36 DSOs.
+    native_names = {'surfaceflinger', 'libgui.so', 'libui.so', 'libhwui.so',
+                    'libandroid_runtime.so', 'libbinder.so', 'libhidlbase.so',
+                    'libutils.so', 'libcutils.so', 'liblog.so',
+                    'libOpenCv.camera.samsung.so', 'libFoodDetector.camera.samsung.so'}
+    native_entries = [(p, p.relative_to(root).as_posix()) for p in sorted(root.rglob('*'))
+                      if p.is_file() and p.name in native_names]
+    archive(output / 'native-display.zip', native_entries)
     for group, names in PACKAGES.items():
         entries = []
         for name in names:

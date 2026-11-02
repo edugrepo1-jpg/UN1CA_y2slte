@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check final hardware inputs against the r8s stock, not the donor's hardware.
 
-These checks prove preservation of loader inputs, features and HAL names.
+These checks prove preservation of loader inputs, features and HAL instances.
 They do not prove HAL execution, linker namespaces or physical operation.
 """
 from pathlib import Path, PurePosixPath
@@ -21,6 +21,7 @@ HALS = {
     'android.hardware.audio', 'android.hardware.audio.effect',
     'android.hardware.health', 'android.hardware.power', 'android.hardware.thermal',
     'android.hardware.keymaster',
+    'android.hardware.radio', 'android.hardware.radio.config',
 }
 FEATURES = ('android.hardware.sensor.', 'android.hardware.camera',
             'android.hardware.nfc', 'android.hardware.wifi',
@@ -38,17 +39,31 @@ def hardware_features(root: Path) -> set[str]:
             if node.get('name', '').startswith(FEATURES)}
 
 
-def hal_names(root: Path) -> set[str]:
-    result = set()
+def hal_inventory(root: Path) -> tuple[set[str], set[tuple[str, str]]]:
+    result, instances = set(), set()
     for partition in PARTITIONS:
         directory = root / partition / 'etc/vintf'
         for xml in (directory / 'manifest.xml', *sorted((directory / 'manifest').glob('*.xml'))):
             if xml.is_file():
                 document = ET.parse(xml).getroot()
                 if document.tag == 'manifest':
-                    result.update(node.text.strip() for node in document.findall('hal/name')
-                                  if node.text and node.text.strip() in HALS)
-    return result
+                    for hal in document.findall('hal'):
+                        name = (hal.findtext('name') or '').strip()
+                        if name not in HALS:
+                            continue
+                        result.add(name)
+                        for instance in hal.findall('interface/instance'):
+                            if instance.text and instance.text.strip():
+                                instances.add((name, instance.text.strip()))
+                        for fqname in hal.findall('fqname'):
+                            value = (fqname.text or '').strip()
+                            if '/' in value:
+                                instances.add((name, value.split('/', 1)[1]))
+    return result, instances
+
+
+def hal_names(root: Path) -> set[str]:
+    return hal_inventory(root)[0]
 
 
 def sensor_modules(config: Path) -> set[str]:
@@ -76,10 +91,14 @@ def verify(stock: Path, final: Path) -> dict:
     missing = features - hardware_features(final)
     if missing:
         raise ValueError(f'Stock r8s hardware features missing from final tree: {sorted(missing)}')
-    hals = hal_names(stock)
-    missing = hals - hal_names(final)
+    hals, instances = hal_inventory(stock)
+    final_hals, final_instances = hal_inventory(final)
+    missing = hals - final_hals
     if missing:
         raise ValueError(f'Stock r8s HAL declarations missing from final tree: {sorted(missing)}')
+    missing_instances = instances - final_instances
+    if missing_instances:
+        raise ValueError(f'Stock r8s HAL instances missing from final tree: {sorted(missing_instances)}')
     config = stock / 'vendor/etc/sensors/hals.conf'
     modules = set()
     if config.is_file():
@@ -103,7 +122,8 @@ def verify(stock: Path, final: Path) -> dict:
     if not features or not hals:
         raise ValueError('Stock hardware inventory is empty; refusing a vacuous validation')
     return {'stock_hardware_features_preserved': len(features),
-            'stock_hal_names_preserved': len(hals), 'stock_sensor_modules_preserved': len(modules)}
+            'stock_hal_names_preserved': len(hals), 'stock_hal_instances_preserved': len(instances),
+            'stock_sensor_modules_preserved': len(modules)}
 
 
 if __name__ == '__main__':

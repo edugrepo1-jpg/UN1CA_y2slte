@@ -56,6 +56,9 @@ jobs:
           key: r8s-audit-ubuntu24-jdk17-${{ steps.tool-revisions.outputs.key }}
       - name: Build extraction tools, not a ROM or kernel
         run: |
+          # android-tools applies its pinned source patches with git am.
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
           source ./buildenv.sh r8s
           ./scripts/build_dependencies.sh
       - name: Obtain only the pinned Android 17 source
@@ -123,6 +126,14 @@ jobs:
             out/source-audit/configs-tools.zip
             out/source-audit/manifest.json
             out/target/r8s/*.log
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exact-api37-native-display-${{ github.run_id }}
+          path: out/source-audit/native-display.zip
           if-no-files-found: warn
           retention-days: 7
           compression-level: 0
