@@ -1,27 +1,20 @@
-GM HUB One UI 9 / Android 17 - r8s diagnostic build 7 - 2026-11-02
-Requested explicitly by GMNevz after publishing accumulated corrections.
+GM HUB One UI 9 / Android 17 - r8s diagnostic build 9 - 2026-11-02
+Explicitly requested by GMNevz after review of failed-logs-8.zip.
 Target: Samsung SM-G780F / r8s only
 Source firmware: SM-S926B EUX S926BXXSIEZJ1
-ROM feature/audit commit: 1532bfc49953ea01480be53ffa1542ee239967c9
-Kernel: edugrepo1-jpg/android_kernel_samsung_exynos990
-Kernel branch: gmkernel-android17-r8s-20261101
+ROM fixes: f86c16a191a1890cdbeab07179ee3bed6cf0671f
+Glass safeguards and staged QS source: 5948b9242155d44fe5663ce625a9462431f37cf2
 Kernel SHA: 2fba3af513f2b2e831cc4ddddc0b3a100ecd9f47
 Mode: compile - GitHub artifacts only; no OTA, Pixeldrain or releases.
 
-Includes the corrected compiler bootstrap, Android 17 optical fingerprint/lights
-bridges, Hub compatibility, native camera/recording guards, Pure Black, cached-app
-freezer, r8s DVFS/SSRM and multi-window policy. The three opt-in Liquid Glass
-engines are integrated on the captured QS backdrop. The Undervolt page offers
-CPU A55/A76/M5, GPU and RAM from 0 to -10 percent in 1-percent steps with explicit
-root-backed application and kernel acknowledgement. No automatic voltage preset,
-boot-time margin or charging change is applied by this page.
+Run 41485315249 attempt 2 recompiled cda42c9 and repeated its incorrect
+vendor SDK 30 versus stock system SDK 33 comparison. This NEW run includes
+f86c16a, which validates against exact stock vendor SDK instead, retaining
+output API37. It also includes property lookup, OTA SDK metadata, full-JDK17
+validation and transactional APK-cache fixes. All 158 host tests passed.
 
-Pre-build evidence: 133 host tests passed; 109 Hub classes assembled to DEX and
-3064 exact Samsung/API references resolved. Exact camera native patch sequence,
-recording-library branch and active GEMALTO eSE customization passed retained
-firmware inputs. The changed kernel sysfs store passed native host tests.
-Linux compiler bootstrap passed in the previous source-input inspection.
-
-Known scope: full Apple QS and systemwide Liquid Glass expansion remain pending.
-This build is not proof of boot, runtime linker namespaces, physical hardware
-behavior or measured performance. Preserve diagnostic artifacts for review.
+The three opt-in QS glass engines, Hub undervolt and prior hardware/source
+corrections remain included. Apple editor model/persistence/native scene
+bindings are staged source only and not installed or enabled; visual editor,
+Compose sliders and native media placement remain unfinished. No claim of
+complete Apple QS, full-system glass, boot or physical hardware validation.
