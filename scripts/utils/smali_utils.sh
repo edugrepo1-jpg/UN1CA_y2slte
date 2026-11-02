@@ -134,6 +134,26 @@ SMALI_PATCH()
         return 1
     fi
 
+    # Native and abstract declarations cannot contain a DEX code item. Leaving
+    # those modifiers while inserting a body builds an invalid method. Likewise
+    # an instance constructor cannot return before its superclass is initialized.
+    if [[ "$OPERATION" == "null" || "$OPERATION" == "return" ]]; then
+        if awk -v needle="$METHOD" '
+            $1 == ".method" && $NF == needle {
+                for (i = 2; i < NF; i++)
+                    if ($i == "native" || $i == "abstract") found = 1
+            }
+            END { exit !found }
+        ' "$FILE_PATH/$SMALI"; then
+            LOGE "Cannot replace the body of native/abstract method \"$METHOD\""
+            return 1
+        fi
+        if [[ "$METHOD" == '<init>('* ]]; then
+            LOGE "Cannot erase constructor initialization in \"$METHOD\""
+            return 1
+        fi
+    fi
+
     local BEFORE
     local AFTER
 

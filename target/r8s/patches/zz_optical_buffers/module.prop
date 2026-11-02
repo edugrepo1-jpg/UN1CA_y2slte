@@ -1,0 +1,6 @@
+id=r8s_optical_buffers
+name=r8s native Android 17 optical fingerprint buffers
+version=1.0
+versionCode=1
+author=GMNevz
+description=Restore the optical mask usage tag and legacy allocator allowance without replacing the native graphics ABI

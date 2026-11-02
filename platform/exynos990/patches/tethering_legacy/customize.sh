@@ -10,19 +10,16 @@ if [ ! -f "$CAPEX" ]; then
     return 1
 fi
 
-if ! sudo -n -v &> /dev/null; then
-    LOG "\033[0;33m! Root permissions are required to unpack the Tethering APEX\033[0m"
-    if ! sudo -v 2> /dev/null; then
-        LOGE "Root permissions are required to unpack the Tethering APEX"
-        return 1
-    fi
+if ! RUN_AS_ROOT true; then
+    LOGE "Root or passwordless sudo is required to unpack the Tethering APEX"
+    return 1
 fi
 
 # A terminated build may leave the read-only payload mounted below PATCH_TMP.
 # Unmount it before removing the previous temporary tree.
 if mountpoint -q "$PATCH_TMP/mnt"; then
     LOGW "Unmounting stale Tethering APEX payload from a previous build"
-    if ! sudo umount "$PATCH_TMP/mnt"; then
+    if ! RUN_AS_ROOT umount "$PATCH_TMP/mnt"; then
         LOGE "Failed to unmount stale Tethering APEX payload: ${PATCH_TMP//$SRC_DIR/}/mnt"
         return 1
     fi
@@ -49,41 +46,41 @@ EVAL "apktool d -j \"$(nproc)\" -o \"$DECODED\" -r \"$PATCH_TMP/original.apex\""
 
 LOG "- Extracting apex_payload.img"
 mkdir -p "$PAYLOAD" "$PATCH_TMP/mnt"
-if ! sudo mount -o ro "$DECODED/unknown/apex_payload.img" "$PATCH_TMP/mnt"; then
+if ! RUN_AS_ROOT mount -o ro "$DECODED/unknown/apex_payload.img" "$PATCH_TMP/mnt"; then
     LOGE "Failed to mount Tethering APEX payload"
     return 1
 fi
-if ! sudo cp -a -T "$PATCH_TMP/mnt" "$PAYLOAD"; then
+if ! RUN_AS_ROOT cp -a -T "$PATCH_TMP/mnt" "$PAYLOAD"; then
     LOGE "Failed to copy Tethering APEX payload"
-    sudo umount "$PATCH_TMP/mnt" || true
+    RUN_AS_ROOT umount "$PATCH_TMP/mnt" || true
     return 1
 fi
-if ! sudo chown -hR "$(whoami):$(whoami)" "$PAYLOAD"; then
+if ! RUN_AS_ROOT chown -hR "$(whoami):$(whoami)" "$PAYLOAD"; then
     LOGE "Failed to change ownership of the extracted Tethering APEX payload"
-    sudo umount "$PATCH_TMP/mnt" || true
+    RUN_AS_ROOT umount "$PATCH_TMP/mnt" || true
     return 1
 fi
 rm -rf "$PAYLOAD/lost+found"
 
 LOG "- Recording Tethering APEX filesystem metadata"
-if ! sudo find "$PATCH_TMP/mnt" \
+if ! RUN_AS_ROOT find "$PATCH_TMP/mnt" \
         -exec stat -c "%n %u %g %a capabilities=0x0" "{}" \; \
         > "$PATCH_TMP/fs_config"; then
     LOGE "Failed to record Tethering APEX fs_config metadata"
-    sudo umount "$PATCH_TMP/mnt" || true
+    RUN_AS_ROOT umount "$PATCH_TMP/mnt" || true
     return 1
 fi
-if ! sudo find "$PATCH_TMP/mnt" -exec sh -c '
+if ! RUN_AS_ROOT find "$PATCH_TMP/mnt" -exec sh -c '
         for path do
             label="$(getfattr -n security.selinux --only-values -h --absolute-names "$path")" || exit 1
             printf "%s %s\n" "$path" "$label"
         done
     ' sh "{}" + > "$PATCH_TMP/file_contexts"; then
     LOGE "Failed to record Tethering APEX SELinux contexts"
-    sudo umount "$PATCH_TMP/mnt" || true
+    RUN_AS_ROOT umount "$PATCH_TMP/mnt" || true
     return 1
 fi
-if ! sudo umount "$PATCH_TMP/mnt"; then
+if ! RUN_AS_ROOT umount "$PATCH_TMP/mnt"; then
     LOGE "Failed to unmount Tethering APEX payload"
     return 1
 fi

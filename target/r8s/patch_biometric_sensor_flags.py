@@ -30,8 +30,9 @@ FUNCTION = f'''.method private static {HELPER}(Ljava/lang/String;)Z
 '''
 
 
-def patch_text(text: str) -> tuple[str, bool]:
-    if not re.search(r'^\.class\b[^\n]* ' + re.escape(CLASS) + '$', text, re.M):
+def patch_text(text: str, descriptor: str = CLASS) -> tuple[str, bool]:
+    function = FUNCTION.replace(CLASS, descriptor)
+    if not re.search(r'^\.class\b[^\n]* ' + re.escape(descriptor) + '$', text, re.M):
         raise ValueError('Unexpected native biometric feature class')
     methods = list(METHOD.finditer(text))
     if len(methods) != 1:
@@ -39,7 +40,7 @@ def patch_text(text: str) -> tuple[str, bool]:
     method = methods[0]
     body = method['body']
     if HELPER in text:
-        if FUNCTION not in text or body.count(f'->{HELPER}(') != len(SENSORS):
+        if function not in text or body.count(f'->{HELPER}(') != len(SENSORS):
             raise ValueError('Partial biometric sensor flag adaptation')
         return text, False
     registers = list(re.finditer(r'^    \.(locals|registers) (\d+)\s*$', body, re.M))
@@ -53,31 +54,33 @@ def patch_text(text: str) -> tuple[str, bool]:
         declarations = re.findall(r'^\.field[^\n]* ' + re.escape(field + ':Z') + r'$', text, re.M)
         if len(declarations) != 1:
             raise ValueError(f'Unknown biometric field declaration: {field}')
-        pattern = r'^    sput-boolean [vp]\d+, ' + re.escape(CLASS + '->' + field + ':Z') + r'$'
+        pattern = r'^    sput-boolean [vp]\d+, ' + re.escape(descriptor + '->' + field + ':Z') + r'$'
         stores = list(re.finditer(pattern, body, re.M))
         if len(stores) != 1 or len(re.findall(pattern, text, re.M)) != 1:
             raise ValueError(f'Expected one native initializer assignment for {field}')
         store = stores[0]
         new_reg = f'v{count}'
         code = (f'    const-string {new_reg}, "{sensor}"\n'
-                f'    invoke-static/range {{{new_reg} .. {new_reg}}}, {CLASS}->{HELPER}(Ljava/lang/String;)Z\n'
+                f'    invoke-static/range {{{new_reg} .. {new_reg}}}, {descriptor}->{HELPER}(Ljava/lang/String;)Z\n'
                 f'    move-result {new_reg}\n'
-                f'    sput-boolean {new_reg}, {CLASS}->{field}:Z')
+                f'    sput-boolean {new_reg}, {descriptor}->{field}:Z')
         edits.append((store.start(), store.end(), code))
     directive = registers[0]
     edits.append((directive.start(), directive.end(), f'    .{directive[1]} {count + 1}\n'))
     for start, end, code in sorted(edits, reverse=True):
         body = body[:start] + code + body[end:]
     return (text[:method.start('body')] + body + text[method.end('body'):]
-            + '\n' + FUNCTION), True
+            + '\n' + function), True
 
 
-def patch_tree(root: Path) -> bool:
-    files = list(root.glob('smali*/' + PATH))
+def patch_tree(root: Path, ui: bool = False) -> bool:
+    path = 'com/samsung/android/biometrics/app/setting/Utils$Config.smali' if ui else PATH
+    descriptor = 'L' + path[:-6] + ';' if ui else CLASS
+    files = list(root.glob('smali*/' + path))
     if len(files) != 1:
         raise ValueError(f'Expected one native SemBiometricFeature class, found {len(files)}')
     source = files[0]
-    updated, changed = patch_text(source.read_text(encoding='utf-8'))
+    updated, changed = patch_text(source.read_text(encoding='utf-8'), descriptor)
     if changed:
         source.write_text(updated, encoding='utf-8', newline='\n')
     return changed
@@ -85,7 +88,7 @@ def patch_tree(root: Path) -> bool:
 
 if __name__ == '__main__':
     try:
-        changed = patch_tree(Path(sys.argv[1]))
+        changed = patch_tree(Path(sys.argv[1]), ui='--ui' in sys.argv[2:])
         print('r8s native biometric sensor flags: ' + ('adapted' if changed else 'already adapted'))
     except (OSError, ValueError, IndexError) as exc:
         print(f'r8s native biometric sensor adaptation: {exc}', file=sys.stderr)

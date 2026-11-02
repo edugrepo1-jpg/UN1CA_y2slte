@@ -14,6 +14,30 @@ HELPER = ROOT / "scripts/utils/smali_utils.sh"
 
 
 class SmaliMethodValidationTests(unittest.TestCase):
+    def test_abstract_or_native_method_cannot_receive_an_invalid_body(self):
+        for modifier, operation, signature in (
+            ('abstract', 'null', 'event()V'),
+            ('native', 'return', 'count()I'),
+        ):
+            with self.subTest(modifier=modifier):
+                original = ('.class public Lcom/example/Test;\n'
+                            f'.method public {modifier} {signature}\n.end method\n')
+                result, transformed = self.run_helper(original, operation, signature, '1')
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('native/abstract', result.stderr)
+                self.assertEqual(original, transformed)
+
+    def test_constructor_cannot_return_without_super_initialization(self):
+        original = ('.class public Lcom/example/Test;\n'
+                    '.super Ljava/lang/Object;\n'
+                    '.method public constructor <init>()V\n    .locals 0\n'
+                    '    invoke-direct {p0}, Ljava/lang/Object;-><init>()V\n'
+                    '    return-void\n.end method\n')
+        result, transformed = self.run_helper(original, 'null', '<init>()V')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('constructor initialization', result.stderr)
+        self.assertEqual(original, transformed)
+
     def test_strip_preserves_immediately_adjacent_method(self):
         other = ('.method public bar()V\n'
                  '    .locals 0\n    return-void\n.end method\n')

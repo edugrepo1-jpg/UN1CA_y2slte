@@ -17,6 +17,40 @@ GATE = '''
 '''
 
 
+def optimize_recording_setters(text: str) -> str:
+    """EZJ1 separates diagnostic bookkeeping from each visual setter."""
+    original = text
+    for signature, record, invoke, setter in (
+        ('setAlpha(F)V', 'recordAlpha(F)V', 'invoke-direct', 'setAlpha(F)V'),
+        ('setVisibility(I)V', 'recordVisibility(I)V', 'invoke-virtual', 'setVisibility(I)V'),
+    ):
+        match = re.search(r'(?ms)^\.method public ' + re.escape(signature)
+                          + r'\n.*?^\.end method', text)
+        if match is None:
+            return original
+        body = match[0]
+        instructions = [line.strip() for line in body.splitlines()
+                        if line.strip() and not line.strip().startswith(('.', '#'))]
+        call = f'{invoke} {{p0, p1}}, {CLASS}->{record}'
+        expected = [call, VISUAL.strip(), 'if-eqz p0, :cond_0',
+                    f'invoke-virtual {{p0, p1}}, Landroid/view/View;->{setter}',
+                    ':cond_0', 'return-void']
+        if instructions != expected or not re.search(r'(?m)^    \.locals 0$', body):
+            return original
+        gate = (f'    const-string v0, "QSAnimView"\n'
+                '    const/4 v1, 0x3\n'
+                '    invoke-static {v0, v1}, Landroid/util/Log;->isLoggable(Ljava/lang/String;I)Z\n'
+                '    move-result v0\n'
+                '    if-eqz v0, :r8s_apply_visual\n\n')
+        changed = body.replace('    .locals 0', '    .locals 2', 1)
+        changed = changed.replace('    ' + call, gate + '    ' + call, 1)
+        changed = changed.replace(VISUAL, '    :r8s_apply_visual\n' + VISUAL, 1)
+        if changed[changed.index(VISUAL):] != body[body.index(VISUAL):]:
+            raise ValueError('Android 17 visual setter changed')
+        text = text[:match.start()] + changed + text[match.end():]
+    return text
+
+
 def optimize(text: str) -> str:
     original = text
     # Modern One UI 9 builds may no longer invoke expensive legacy Debug
@@ -27,6 +61,8 @@ def optimize(text: str) -> str:
         return text
     if ":r8s_apply_visual" in text:
         raise ValueError("Partially modified QSAnimView; review the source")
+    if f'{CLASS}->recordAlpha(F)V' in text and f'{CLASS}->recordVisibility(I)V' in text:
+        return optimize_recording_setters(text)
     for signature in ("setAlpha(F)V", "setVisibility(I)V"):
         pattern = r"(?ms)^\.method public " + re.escape(signature) + r"\n.*?^\.end method"
         match = re.search(pattern, text)

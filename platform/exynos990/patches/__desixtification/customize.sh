@@ -29,58 +29,61 @@ INSTALL_DESIX_RUNTIME32_STANDALONE()
         LOGE "Missing r11s Runtime APEX for standalone ARM32 compatibility"
         return 1
     }
-    if ! sudo -n -v &> /dev/null && ! sudo -v; then
+    if ! RUN_AS_ROOT true; then
         LOGE "Root permissions are required to extract the ARM32 Runtime payload"
         return 1
     fi
 
-    sudo rm -rf "$RUNTIME_ROOT"
+    if mountpoint -q "$MOUNT_DIR"; then
+        RUN_AS_ROOT umount "$MOUNT_DIR" || return 1
+    fi
+    RUN_AS_ROOT rm -rf "$RUNTIME_ROOT" || return 1
     mkdir -p "$RUNTIME_ROOT" "$MOUNT_DIR"
     LOG "- Extracting standalone ARM32 linker/Bionic from r11s Runtime"
     EVAL "apktool d -j \"$(nproc)\" -o \"$DECODED\" -r \"$DONOR_APEX\""
-    sudo mount -o ro "$DECODED/unknown/apex_payload.img" "$MOUNT_DIR" || return 1
+    RUN_AS_ROOT mount -o ro "$DECODED/unknown/apex_payload.img" "$MOUNT_DIR" || return 1
 
     mkdir -p "$WORK_DIR/system/system/bin" "$WORK_DIR/system/system/lib"
     for DEST in linker linker_asan; do
         if [ -e "$MOUNT_DIR/bin/$DEST" ] || [ -L "$MOUNT_DIR/bin/$DEST" ]; then
             [ "$DEST" = "linker" ] && RUNTIME_LINKER_FOUND=true
-            sudo cp -a "$MOUNT_DIR/bin/$DEST" "$WORK_DIR/system/system/bin/$DEST" || {
-                sudo umount "$MOUNT_DIR" || true
+            RUN_AS_ROOT cp -a "$MOUNT_DIR/bin/$DEST" "$WORK_DIR/system/system/bin/$DEST" || {
+                RUN_AS_ROOT umount "$MOUNT_DIR" || true
                 return 1
             }
-            sudo chown -h "$(id -u):$(id -g)" "$WORK_DIR/system/system/bin/$DEST"
+            RUN_AS_ROOT chown -h "$(id -u):$(id -g)" "$WORK_DIR/system/system/bin/$DEST"
             SET_METADATA "system" "system/bin/$DEST" 0 2000 755 \
                 "u:object_r:system_linker_exec:s0" || {
-                    sudo umount "$MOUNT_DIR" || true
+                    RUN_AS_ROOT umount "$MOUNT_DIR" || true
                     return 1
                 }
         fi
     done
     if ! $RUNTIME_LINKER_FOUND; then
-        sudo umount "$MOUNT_DIR" || true
+        RUN_AS_ROOT umount "$MOUNT_DIR" || true
         LOGE "r11s Runtime APEX lacks the ARM32 linker"
         return 1
     fi
 
     for BIONIC_LIB in libc.so libdl.so libdl_android.so libm.so; do
         if [ ! -f "$MOUNT_DIR/lib/bionic/$BIONIC_LIB" ]; then
-            sudo umount "$MOUNT_DIR" || true
+            RUN_AS_ROOT umount "$MOUNT_DIR" || true
             LOGE "r11s Runtime APEX lacks ARM32 Bionic $BIONIC_LIB"
             return 1
         fi
-        sudo cp -a "$MOUNT_DIR/lib/bionic/$BIONIC_LIB" \
+        RUN_AS_ROOT cp -a "$MOUNT_DIR/lib/bionic/$BIONIC_LIB" \
             "$WORK_DIR/system/system/lib/$BIONIC_LIB" || {
-                sudo umount "$MOUNT_DIR" || true
+                RUN_AS_ROOT umount "$MOUNT_DIR" || true
                 return 1
             }
-        sudo chown -h "$(id -u):$(id -g)" "$WORK_DIR/system/system/lib/$BIONIC_LIB"
+        RUN_AS_ROOT chown -h "$(id -u):$(id -g)" "$WORK_DIR/system/system/lib/$BIONIC_LIB"
         SET_METADATA "system" "system/lib/$BIONIC_LIB" 0 0 644 \
             "u:object_r:system_lib_file:s0" || {
-                sudo umount "$MOUNT_DIR" || true
+                RUN_AS_ROOT umount "$MOUNT_DIR" || true
                 return 1
             }
     done
-    sudo umount "$MOUNT_DIR" || return 1
+    RUN_AS_ROOT umount "$MOUNT_DIR" || return 1
     rm -rf "$RUNTIME_ROOT"
 }
 
@@ -141,14 +144,14 @@ MERGE_DESIX_APEX_ARM32()
         LOGE "Missing base or donor APEX for $APEX_NAME"
         return 1
     fi
-    if ! sudo -n -v &> /dev/null && ! sudo -v; then
+    if ! RUN_AS_ROOT true; then
         LOGE "Root permissions are required to merge $APEX_NAME"
         return 1
     fi
     if mountpoint -q "$MOUNT_DIR"; then
-        sudo umount "$MOUNT_DIR" || return 1
+        RUN_AS_ROOT umount "$MOUNT_DIR" || return 1
     fi
-    sudo rm -rf "$MERGE_ROOT"
+    RUN_AS_ROOT rm -rf "$MERGE_ROOT"
     mkdir -p "$MERGE_ROOT" "$MOUNT_DIR"
 
     LOG "- Decoding source $APEX_NAME"
@@ -157,42 +160,42 @@ MERGE_DESIX_APEX_ARM32()
     EVAL "apktool d -j \"$(nproc)\" -o \"$DONOR_DECODED\" -r \"$DONOR_APEX\""
 
     mkdir -p "$PAYLOAD"
-    sudo mount -o ro "$BASE_DECODED/unknown/apex_payload.img" "$MOUNT_DIR" || return 1
-    sudo cp -a -T "$MOUNT_DIR" "$PAYLOAD" || {
-        sudo umount "$MOUNT_DIR" || true
+    RUN_AS_ROOT mount -o ro "$BASE_DECODED/unknown/apex_payload.img" "$MOUNT_DIR" || return 1
+    RUN_AS_ROOT cp -a -T "$MOUNT_DIR" "$PAYLOAD" || {
+        RUN_AS_ROOT umount "$MOUNT_DIR" || true
         return 1
     }
-    sudo umount "$MOUNT_DIR" || return 1
+    RUN_AS_ROOT umount "$MOUNT_DIR" || return 1
 
-    sudo mount -o ro "$DONOR_DECODED/unknown/apex_payload.img" "$MOUNT_DIR" || return 1
+    RUN_AS_ROOT mount -o ro "$DONOR_DECODED/unknown/apex_payload.img" "$MOUNT_DIR" || return 1
     if [ ! -d "$MOUNT_DIR/lib" ]; then
         LOGE "$APEX_NAME donor has no ARM32 lib directory"
-        sudo umount "$MOUNT_DIR" || true
+        RUN_AS_ROOT umount "$MOUNT_DIR" || true
         return 1
     fi
-    sudo cp -a "$MOUNT_DIR/lib" "$PAYLOAD/" || {
-        sudo umount "$MOUNT_DIR" || true
+    RUN_AS_ROOT cp -a "$MOUNT_DIR/lib" "$PAYLOAD/" || {
+        RUN_AS_ROOT umount "$MOUNT_DIR" || true
         return 1
     }
     if [ "$MERGE_BIN_LINKER" = "true" ]; then
         for ARM32_RUNTIME_BIN in linker linker_asan crash_dump32; do
             if [ -e "$MOUNT_DIR/bin/$ARM32_RUNTIME_BIN" ] || \
                     [ -L "$MOUNT_DIR/bin/$ARM32_RUNTIME_BIN" ]; then
-                sudo cp -a "$MOUNT_DIR/bin/$ARM32_RUNTIME_BIN" \
+                RUN_AS_ROOT cp -a "$MOUNT_DIR/bin/$ARM32_RUNTIME_BIN" \
                     "$PAYLOAD/bin/$ARM32_RUNTIME_BIN" || {
-                        sudo umount "$MOUNT_DIR" || true
+                        RUN_AS_ROOT umount "$MOUNT_DIR" || true
                         return 1
                     }
             fi
         done
     fi
-    sudo umount "$MOUNT_DIR" || return 1
-    sudo rm -rf "$PAYLOAD/lost+found"
+    RUN_AS_ROOT umount "$MOUNT_DIR" || return 1
+    RUN_AS_ROOT rm -rf "$PAYLOAD/lost+found"
 
     # Generate metadata from the merged tree, retaining labels copied from
     # both payloads. build_fs_image consumes paths relative to payload root.
-    sudo find "$PAYLOAD" -exec stat -c '%n %u %g %a capabilities=0x0' '{}' \; > "$FS_CONFIG" || return 1
-    sudo find "$PAYLOAD" -exec sh -c '
+    RUN_AS_ROOT find "$PAYLOAD" -exec stat -c '%n %u %g %a capabilities=0x0' '{}' \; > "$FS_CONFIG" || return 1
+    RUN_AS_ROOT find "$PAYLOAD" -exec sh -c '
         for path do
             label="$(getfattr -n security.selinux --only-values -h --absolute-names "$path")" || exit 1
             printf "%s %s\n" "$path" "$label"
@@ -204,7 +207,7 @@ MERGE_DESIX_APEX_ARM32()
         -e 's|\]|\\]|g' -e 's|\*|\\*|g' "$FILE_CONTEXTS"
     sort -o "$FS_CONFIG" "$FS_CONFIG"
     sort -o "$FILE_CONTEXTS" "$FILE_CONTEXTS"
-    sudo chown -hR "$(whoami):$(whoami)" "$MERGE_ROOT"
+    RUN_AS_ROOT chown -hR "$(whoami):$(whoami)" "$MERGE_ROOT"
     rm -f "$BASE_DECODED/unknown/apex_payload.img"
 
     LOG "- Rebuilding merged $APEX_NAME payload"

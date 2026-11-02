@@ -103,13 +103,21 @@ class GMHubSourceContracts(unittest.TestCase):
                          "reset_refresh_rate", "paradox_touch_overdrive"):
             self.assertIn(required, keys)
 
-    def test_r8s_60_120_panel_modes(self):
+    def test_r8s_refresh_choices_use_the_active_panel(self):
         values = ET.parse(VALUES / "paradox.xml").getroot()
         refresh = values.find("./string-array[@name='paradox_refresh_rates']")
         self.assertIsNotNone(refresh)
         self.assertEqual([e.text for e in refresh], ["60", "120"])
-        # 96 Hz needs runtime EA8079 detection; the pinned kernel supports it,
-        # but the generic GM Hub must not offer it to S6E3FC3.
+        # XML is only a fallback. Runtime display modes replace both lists,
+        # allowing EA8079 96 Hz without exposing it on S6E3FC3.
+        helper = (SMALI / "ParadoxRefreshModes.smali").read_text(encoding="utf-8")
+        self.assertIn("->getSupportedModes()", helper)
+        self.assertIn("->getPhysicalWidth()", helper)
+        self.assertIn("->getPhysicalHeight()", helper)
+        self.assertIn("->findIndexOfValue(Ljava/lang/String;)I", helper)
+        center = (SMALI / "ParadoxCenterFragment.smali").read_text(encoding="utf-8")
+        self.assertEqual(center.count("->configure(Landroidx/preference/ListPreference;Landroid/content/Context;)V"), 2)
+        self.assertIn("->apply(Landroid/content/Context;Landroidx/preference/ListPreference;Landroidx/preference/ListPreference;Ljava/lang/String;)Z", center)
         for filename in ("ParadoxCoreModesFragment.smali",
                          "ParadoxCenterFragment.smali"):
             text = (SMALI / filename).read_text(encoding="utf-8")

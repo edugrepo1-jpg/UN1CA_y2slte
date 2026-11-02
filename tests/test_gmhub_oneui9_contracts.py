@@ -23,6 +23,7 @@ class OneUI9BuildContracts(unittest.TestCase):
     def test_stock_r8s_boot_vendor_geometry(self):
         cfg = contents("target/r8s/config.sh")
         self.assertIn('TARGET_ASSERT_MODEL=("SM-G780F")', cfg)
+        self.assertIn('TARGET_FIRMWARE_VERSION="G780FXXSOFYJ1/G780FOXMOFYJ1/G780FXXSOFYJ1"', cfg)
         self.assertIn("TARGET_PLATFORM_SDK_VERSION=33", cfg)
         self.assertIn("TARGET_BOOT_PARTITION_SIZE=61865984", cfg)
         self.assertIn('TARGET_LCD_CONFIG_HFR_SUPPORTED_REFRESH_RATE="60,96,120"', cfg)

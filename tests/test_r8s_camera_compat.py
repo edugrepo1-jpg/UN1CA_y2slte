@@ -37,7 +37,7 @@ SAMPLE = f'''.class public final enum {RES}
     return-void
 .end method
 '''
-RATIOS = f'.field public static final enum RATIO_4x3:{RATIO}\n'
+RATIOS = f'.class public final enum {RATIO}\n.super Ljava/lang/Enum;\n.field public static final enum RATIO_4x3:{RATIO}\n'
 XML = '<features><local name="FRONT_CAMERA_RESOLUTION_SUPER_RESOLUTION" value="6528x4896"/></features>'
 
 
@@ -86,6 +86,17 @@ class CameraCompatTests(unittest.TestCase):
     def test_native_donor_sizes_are_not_replaced(self):
         native = '<features><local value="4032x3024"/></features>'
         self.assertEqual(camera.patch_text(SAMPLE, RATIOS, native), (SAMPLE, []))
+
+    def test_android17_obfuscated_enums_preserve_descriptors(self):
+        source = SAMPLE.replace(RES, 'Ll9/a2;').replace(RATIO, 'Ll9/b;')
+        source = source.replace('.method private constructor', '.method public constructor')
+        ratio = RATIOS.replace(RATIO, 'Ll9/b;')
+        changed, missing = camera.patch_text(source, ratio, XML)
+        self.assertEqual(missing, [(6528, 4896)])
+        self.assertIn('Ll9/a2;->r8sExtendXmlResolutions([Ll9/a2;)[Ll9/a2;', changed)
+        self.assertIn('Ll9/b;->RATIO_4x3:Ll9/b;', changed)
+        self.assertNotIn(RES, changed)
+        self.assertEqual(camera.patch_text(changed, ratio, XML), (changed, []))
 
     def test_unknown_dimensions_do_not_invent_hardware_support(self):
         with self.assertRaisesRegex(ValueError, 'Unverified r8s dimensions'):

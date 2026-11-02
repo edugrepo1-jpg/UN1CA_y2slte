@@ -172,13 +172,18 @@ if [ "$TARGET_PLATFORM_SDK_VERSION" -lt "35" ]; then
             ! xxd -p -c 4 "$WORK_DIR/vendor/bin/hw/vendor.samsung.hardware.light-service" | grep -q "1853$"; then
         PATCHED=true
         LIGHTS_PATCH="$MODPATH/lights/services.jar/0001-Backport-legacy-SehLights-HAL-code.patch"
-        if [[ "$TARGET_CODENAME" == "r8s" ]]; then
+          if [[ "$TARGET_CODENAME" == "r8s" ]]; then
             DECODE_APK "system" "system/framework/services.jar" || return 1
             LIGHTS_IMPL="$(find "$APKTOOL_DIR/system/framework/services.jar" \
                 -type f -path '*/com/android/server/lights/LightsService$LightImpl.smali' -print -quit)"
             if [ -n "$LIGHTS_IMPL" ] && \
                     grep -Fq 'LightsService$VintfHalCache;' "$LIGHTS_IMPL"; then
                 LIGHTS_PATCH="$MODPATH/lights/services.jar/0002-Backport-SehLights-with-VintfHalCache.patch"
+            fi
+            if [[ "$SOURCE_PLATFORM_SDK_VERSION" -ge 37 ]]; then
+                # API37 split setLightLocked/setLightUnchecked and added muted
+                # and configuration control. Keep those native paths intact.
+                LIGHTS_PATCH="$MODPATH/lights/services.jar/0003-Backport-SehLights-Android17.patch"
             fi
         fi
         APPLY_PATCH "system" "system/framework/services.jar" "$LIGHTS_PATCH"

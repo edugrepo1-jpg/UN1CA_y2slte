@@ -34,6 +34,15 @@ def xml_dimensions(source: str) -> set[tuple[int, int]]:
 
 
 def patch_text(text: str, ratios: str, feature: str) -> tuple[str, list[tuple[int, int]]]:
+    # API37 R8 renames the classes (EZJ1: l9/a2 and l9/b), while preserving
+    # enum fields, constructor semantics and the lookup built from values().
+    # Derive both descriptors from declarations rather than mapping R8 names.
+    classes = re.findall(r'^\.class public final enum (L[^;]+;)$', text, re.M)
+    ratio_classes = re.findall(r'^\.class public final enum (L[^;]+;)$', ratios, re.M)
+    if len(classes) != 1 or len(ratio_classes) != 1:
+        raise ValueError('Samsung resolution enum or aspect ratio is not available')
+    RES, RATIO = classes[0], ratio_classes[0]
+    CTOR = f'<init>(Ljava/lang/String;IIII{RATIO}I)V'
     if not re.search(r'^\.class\b[^\n]* ' + re.escape(RES) + r'$', text, re.M):
         raise ValueError('Unexpected Samsung Resolution class descriptor')
     declared = set(re.findall(
@@ -51,7 +60,7 @@ def patch_text(text: str, ratios: str, feature: str) -> tuple[str, list[tuple[in
     unknown = set(missing) - set(KNOWN)
     if unknown:
         raise ValueError(f'Unverified r8s dimensions need donor/HAL review: {sorted(unknown)}')
-    constructor = re.search(r'^\.method private constructor ' + re.escape(CTOR)
+    constructor = re.search(r'^\.method (?:private|public) constructor ' + re.escape(CTOR)
                             + r'\n[\s\S]*?^\.end method$', text, re.M)
     if constructor is None:
         raise ValueError('Samsung camera Resolution constructor changed')
@@ -124,11 +133,25 @@ def patch_text(text: str, ratios: str, feature: str) -> tuple[str, list[tuple[in
 
 def patch_tree(root: Path, xml: Path) -> list[tuple[int, int]]:
     paths = list(root.glob('smali*/' + PACKAGE + 'Resolution.smali'))
-    ratios = list(root.glob('smali*/' + PACKAGE + 'AspectRatio.smali'))
-    if len(paths) != 1 or len(ratios) != 1:
-        raise ValueError('Expected one native Resolution and AspectRatio class')
+    if not paths:
+        for path in root.glob('smali*/**/*.smali'):
+            candidate = path.read_text(encoding='utf-8')
+            if (re.search(r'^\.field[^\n]* enum RESOLUTION_4032X3024:L[^;]+;$', candidate, re.M)
+                    and re.search(r'^\.field[^\n]* mWidth:I$', candidate, re.M)
+                    and re.search(r'^\.field[^\n]* mHeight:I$', candidate, re.M)
+                    and re.search(r'^\.field[^\n]* mId:I$', candidate, re.M)):
+                paths.append(path)
+    if len(paths) != 1:
+        raise ValueError(f'Expected one native resolution enum, found {len(paths)}')
     source = paths[0]
-    updated, missing = patch_text(source.read_text(encoding='utf-8'),
+    text = source.read_text(encoding='utf-8')
+    ratio = re.findall(r'^\.field[^\n]* mRatio:(L[^;]+;)$', text, re.M)
+    if len(ratio) != 1:
+        raise ValueError('Expected one native resolution aspect-ratio field')
+    ratios = list(root.glob('smali*/' + ratio[0][1:-1] + '.smali'))
+    if len(ratios) != 1:
+        raise ValueError('Expected one native aspect-ratio enum')
+    updated, missing = patch_text(text,
                                   ratios[0].read_text(encoding='utf-8'),
                                   xml.read_text(encoding='utf-8'))
     if missing:

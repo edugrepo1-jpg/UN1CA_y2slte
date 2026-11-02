@@ -87,6 +87,38 @@ class FirmwareIdentityTests(unittest.TestCase):
         self.assertEqual(result.returncode, 23)
         self.assertEqual(result.stdout, '<-n><--><printf><a b>')
 
+    def test_active_payload_extractors_have_no_password_prompt_fallback(self):
+        modules = ('platform/exynos990/patches/__desixtification/customize.sh',
+                   'platform/exynos990/patches/tethering_legacy/customize.sh',
+                   'platform/exynos990/patches/zzzz_wfd_compat/customize.sh',
+                   'unica/patches/bluetooth/customize.sh',
+                   'unica/patches/vndk/customize.sh')
+        for relative in modules:
+            with self.subTest(module=relative):
+                text = (ROOT / relative).read_text()
+                self.assertNotRegex(text, r'\bsudo\s+(?:-n\s+)?-v\b')
+
+    def test_runtime_permission_denial_stops_before_mount_or_cleanup(self):
+        source = (ROOT / 'platform/exynos990/patches/__desixtification/customize.sh').read_text()
+        start = source.index('INSTALL_DESIX_RUNTIME32_STANDALONE()')
+        end = source.index('\nif [ "$EXYNOS990_RUNTIME32_APEX_MODE" = "merged" ];', start)
+        function = source[start:end]
+        with tempfile.TemporaryDirectory() as tmp:
+            donor = Path(tmp) / 'prebuilts/samsung/r11sxxx/system/apex/com.android.runtime.apex'
+            donor.parent.mkdir(parents=True)
+            donor.write_bytes(b'not decoded when permissions are denied')
+            result = shell(function + f'\nSRC_DIR={Path(tmp).as_posix()!r}\n' + '''
+RUN_AS_ROOT() { printf 'ROOT:%s\\n' "$*"; return 23; }
+LOGE() { printf '%s\\n' "$*" >&2; }
+mountpoint() { echo UNEXPECTED_MOUNT; return 0; }
+INSTALL_DESIX_RUNTIME32_STANDALONE
+''')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('ROOT:true', result.stdout)
+        self.assertNotIn('UNEXPECTED_MOUNT', result.stdout)
+        self.assertNotIn('ROOT:rm ', result.stdout)
+        self.assertNotIn('ROOT:umount ', result.stdout)
+
 
 class FilesystemPreflightTests(unittest.TestCase):
     def run_preflight(self, package='unified', install_status=0, module_status=0, fuse=True):

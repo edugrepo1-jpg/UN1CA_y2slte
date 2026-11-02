@@ -278,6 +278,35 @@ class PureBlackTests(unittest.TestCase):
 
 
 class OneUI9QSTests(unittest.TestCase):
+    def modern_setters(self):
+        cls = 'Lcom/android/systemui/qs/animator/QSAnimView;'
+        result = f'.class public {cls}\n.super Ljava/lang/Object;\n'
+        for name, kind, record, call in (('setAlpha', 'F', 'recordAlpha', 'invoke-direct'),
+                                         ('setVisibility', 'I', 'recordVisibility', 'invoke-virtual')):
+            result += (f'.method public {name}({kind})V\n    .locals 0\n'
+                       f'    {call} {{p0, p1}}, {cls}->{record}({kind})V\n'
+                       f'    iget-object p0, p0, {cls}->view:Landroid/view/View;\n'
+                       '    if-eqz p0, :cond_0\n'
+                       f'    invoke-virtual {{p0, p1}}, Landroid/view/View;->{name}({kind})V\n'
+                       '    :cond_0\n    return-void\n.end method\n')
+        return result + '# Landroid/os/Debug;->getCallers\n'
+
+    def test_android17_recording_setters_keep_the_visual_tail(self):
+        original = self.modern_setters()
+        changed = qs_anim.optimize(original)
+        self.assertNotEqual(original, changed)
+        self.assertEqual(changed.count('->isLoggable('), 2)
+        for method in ('setAlpha(F)V', 'setVisibility(I)V'):
+            before = original[original.index('.method public ' + method):].split('.end method')[0]
+            after = changed[changed.index('.method public ' + method):].split('.end method')[0]
+            tail = '    iget-object p0, p0,'
+            self.assertEqual(before[before.index(tail):], after[after.index(tail):])
+        self.assertEqual(qs_anim.optimize(changed), changed)
+
+    def test_android17_changed_second_setter_does_not_leave_partial_patch(self):
+        original = self.modern_setters().replace('recordVisibility(I)V', 'recordVisibilityChanged(I)V')
+        self.assertEqual(qs_anim.optimize(original), original)
+
     def test_android17_qs_method_layout_divergence_fails_safe(self):
         """Do not break API37 SystemUI when diagnostic method layout changed."""
         original = (

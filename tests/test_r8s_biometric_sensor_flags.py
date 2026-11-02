@@ -26,6 +26,15 @@ SAMPLE = f'''.class public final {flags.CLASS}
 
 
 class SensorFlagTests(unittest.TestCase):
+    def test_native_biometric_app_gets_consistent_optical_and_ultrasonic_flags(self):
+        descriptor = 'Lcom/samsung/android/biometrics/app/setting/Utils$Config;'
+        source = SAMPLE.replace(flags.CLASS, descriptor)
+        updated, changed = flags.patch_text(source, descriptor)
+        self.assertTrue(changed)
+        self.assertNotIn(flags.CLASS, updated)
+        self.assertIn(f'{descriptor}->{flags.HELPER}(Ljava/lang/String;)Z', updated)
+        self.assertEqual(flags.patch_text(updated, descriptor), (updated, False))
+
     def test_old_donor_registers_and_other_flags_remain_unchanged(self):
         result, changed = flags.patch_text(SAMPLE)
         self.assertTrue(changed)

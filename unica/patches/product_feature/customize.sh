@@ -485,7 +485,13 @@ if [[ "$SOURCE_FINGERPRINT_CONFIG_SENSOR" != "$TARGET_FINGERPRINT_CONFIG_SENSOR"
                     "$WORK_DIR/system/system/lib64/libgui.so" \
                     "$WORK_DIR/system/system/lib64/libui.so"
 
-                ADD_TO_WORK_DIR "r9qxxx" "system" "system/priv-app/BiometricSetting/BiometricSetting.apk" 0 0 644 "u:object_r:system_file:s0"
+                if $PRESERVE_NATIVE_FINGERPRINT_UI; then
+                    DECODE_APK "system" "system/priv-app/BiometricSetting/BiometricSetting.apk" || return 1
+                    python3 "$SRC_DIR/target/r8s/patch_biometric_sensor_flags.py" \
+                        "$APKTOOL_DIR/system/priv-app/BiometricSetting/BiometricSetting.apk" --ui || return 1
+                else
+                    ADD_TO_WORK_DIR "r9qxxx" "system" "system/priv-app/BiometricSetting/BiometricSetting.apk" 0 0 644 "u:object_r:system_file:s0"
+                fi
 
                 APPLY_PATCH "system" "system/framework/framework.jar" \
                     "$MODPATH/fingerprint/optical_fod/framework.jar/0001-Add-optical-FOD-support.patch"
