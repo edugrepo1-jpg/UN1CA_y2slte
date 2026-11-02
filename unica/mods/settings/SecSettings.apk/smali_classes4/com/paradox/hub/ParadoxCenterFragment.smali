@@ -543,6 +543,12 @@
     if-eqz v0, :cond_3
 
     invoke-virtual {v0, p0}, Landroidx/preference/Preference;->setOnPreferenceChangeListener(Landroidx/preference/Preference$OnPreferenceChangeListener;)V
+    const/4 v1, 0x0
+    invoke-virtual {v0, v1}, Landroidx/preference/Preference;->setPersistent(Z)V
+    invoke-static {}, Lcom/paradox/hub/ParadoxCenterFragment;->isCachedFreezerSupported()Z
+    move-result v1
+    invoke-virtual {v0, v1}, Landroidx/preference/Preference;->setVisible(Z)V
+
 
     :cond_3
     const-string v0, "paradox_wifi_ping"
@@ -875,50 +881,34 @@
 
     :cond_7
     const-string v2, "cached_apps_freezer"
-
     invoke-virtual {v2, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
-
     move-result v2
-
     if-eqz v2, :cond_9
-
-    check-cast p2, Ljava/lang/Boolean;
-
-    invoke-virtual {p2}, Ljava/lang/Boolean;->booleanValue()Z
-
+    invoke-static {}, Lcom/paradox/hub/ParadoxCenterFragment;->isCachedFreezerSupported()Z
     move-result v2
-
-    if-eqz v2, :cond_8
-
-    const-string v3, "enabled"
-
-    goto :goto_4
-
-    :cond_8
-    const-string v3, "disabled"
-
-    :goto_4
+    if-eqz v2, :freezer_reject
+    check-cast p1, Landroidx/preference/ListPreference;
+    check-cast p2, Ljava/lang/String;
+    invoke-virtual {p1, p2}, Landroidx/preference/ListPreference;->findIndexOfValue(Ljava/lang/String;)I
+    move-result v2
+    if-ltz v2, :freezer_reject
     const-string v4, "cached_apps_freezer"
-
-    invoke-static {v1, v4, v3}, Landroid/provider/Settings$Global;->putString(Landroid/content/ContentResolver;Ljava/lang/String;Ljava/lang/String;)Z
-
+    invoke-static {v1, v4, p2}, Landroid/provider/Settings$Global;->putString(Landroid/content/ContentResolver;Ljava/lang/String;Ljava/lang/String;)Z
+    move-result v2
+    if-eqz v2, :freezer_reject
     invoke-virtual {p0}, Landroidx/fragment/app/Fragment;->getContext()Landroid/content/Context;
-
     move-result-object v4
-
     const-string v5, "paradox_toast_reboot"
-
     invoke-static {v4, v5}, Lcom/paradox/hub/ParadoxCenterFragment;->getParadoxString(Landroid/content/Context;Ljava/lang/String;)Ljava/lang/String;
-
     move-result-object v5
-
     invoke-static {v4, v5, v6}, Landroid/widget/Toast;->makeText(Landroid/content/Context;Ljava/lang/CharSequence;I)Landroid/widget/Toast;
-
     move-result-object v4
-
     invoke-virtual {v4}, Landroid/widget/Toast;->show()V
-
     return v6
+
+    :freezer_reject
+    const/4 v2, 0x0
+    return v2
 
     :cond_9
     const-string/jumbo v2, "screen_resolution"
@@ -1309,7 +1299,7 @@
 
     if-eqz v1, :cond_3
 
-    check-cast v1, Landroidx/preference/TwoStatePreference;
+    check-cast v1, Landroidx/preference/ListPreference;
 
     const-string v2, "cached_apps_freezer"
 
@@ -1317,13 +1307,16 @@
 
     move-result-object v2
 
-    const-string v3, "enabled"
-
-    invoke-virtual {v3, v2}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
-
-    move-result v2
-
-    invoke-virtual {v1, v2}, Landroidx/preference/TwoStatePreference;->setChecked(Z)V
+    const-string v3, "default"
+    if-nez v2, :freezer_have_value
+    move-object v2, v3
+    :freezer_have_value
+    invoke-virtual {v1, v2}, Landroidx/preference/ListPreference;->findIndexOfValue(Ljava/lang/String;)I
+    move-result v4
+    if-gez v4, :freezer_value_valid
+    move-object v2, v3
+    :freezer_value_valid
+    invoke-virtual {v1, v2}, Landroidx/preference/ListPreference;->setValue(Ljava/lang/String;)V
 
     :cond_3
     const-string v1, "paradox_wifi_ping"
@@ -1459,4 +1452,20 @@
     invoke-virtual {v0, v1, v2, v3}, Landroid/os/Handler;->postDelayed(Ljava/lang/Runnable;J)Z
 
     return-void
+.end method
+
+.method public static isCachedFreezerSupported()Z
+    .locals 1
+    :freezer_try
+    invoke-static {}, Landroid/app/ActivityManager;->getService()Landroid/app/IActivityManager;
+    move-result-object v0
+    invoke-interface {v0}, Landroid/app/IActivityManager;->isAppFreezerSupported()Z
+    move-result v0
+    :freezer_try_end
+    return v0
+    .catch Ljava/lang/Exception; {:freezer_try .. :freezer_try_end} :freezer_unavailable
+    :freezer_unavailable
+    move-exception v0
+    const/4 v0, 0x0
+    return v0
 .end method

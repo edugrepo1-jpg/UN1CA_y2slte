@@ -95,13 +95,33 @@ class GMHubSourceContracts(unittest.TestCase):
         panel = ET.parse(XML / "paradox_center_preferences.xml").getroot()
         keys = [e.get(ANDROID + "key") for e in panel.iter()]
         for forbidden in (
-            "screen_resolution", "paradox_wifi_ping", "cached_apps_freezer",
+            "screen_resolution", "paradox_wifi_ping",
             "paradox_audio_dac", "paradox_anti_tracking",
         ):
             self.assertNotIn(forbidden, keys)
         for required in ("min_refresh_rate", "max_refresh_rate",
-                         "reset_refresh_rate", "paradox_touch_overdrive"):
+                         "reset_refresh_rate", "paradox_touch_overdrive", "cached_apps_freezer"):
             self.assertIn(required, keys)
+
+    def test_cached_freezer_uses_native_support_and_global_string_modes(self):
+        values = ET.parse(VALUES / "paradox.xml").getroot()
+        modes = values.find("./string-array[@name='paradox_freezer_values']")
+        self.assertEqual([e.text for e in modes], ['default', 'enabled', 'disabled'])
+        center = (SMALI / 'ParadoxCenterFragment.smali').read_text(encoding='utf-8')
+        self.assertIn('Landroid/app/IActivityManager;->isAppFreezerSupported()Z', center)
+        self.assertIn('Landroid/provider/Settings$Global;->putString(', center)
+        start = center.index('    :cond_7\n', center.index('.method public onPreferenceChange'))
+        end = center.index('    :cond_9\n', start)
+        self.assertNotIn('Ljava/lang/Boolean;', center[start:end])
+        self.assertIn('->findIndexOfValue(Ljava/lang/String;)I', center[start:end])
+        self.assertNotIn('->reboot(', center[start:end])
+
+    def test_multiwindow_does_not_close_under_its_old_temperature_limiter(self):
+        policy = ET.parse(ROOT / 'target/r8s/dvfs/siop_model.xml').getroot()
+        self.assertFalse(policy.findall(".//limiter[@name='MultiWindow']"))
+        self.assertTrue(policy.findall(".//limiter[@name='CPUFreqMax']"))
+        self.assertTrue(policy.findall(".//limiter[@name='GPUFreqMax']"))
+        self.assertTrue(policy.findall(".//limiter[@name='Charging']"))
 
     def test_r8s_refresh_choices_use_the_active_panel(self):
         values = ET.parse(VALUES / "paradox.xml").getroot()

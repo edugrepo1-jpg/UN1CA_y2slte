@@ -5,4 +5,5 @@
     <androidx.preference.ListPreference android:icon="@drawable/sec_ic_settings_display" android:entries="@array/paradox_refresh_rates" android:title="@string/paradox_max_refresh" android:key="max_refresh_rate" android:entryValues="@array/paradox_refresh_rates" />
     <Preference android:icon="@drawable/sec_ic_settings_software_update" android:title="@string/paradox_reset_refresh" android:key="reset_refresh_rate" />
     <androidx.preference.SwitchPreferenceCompat android:icon="@drawable/sec_ic_settings_display" android:title="@string/paradox_touch_overdrive" android:key="paradox_touch_overdrive" />
+    <androidx.preference.ListPreference android:icon="@drawable/sec_ic_settings_devicecare" android:title="@string/paradox_center_cached_apps" android:summary="@string/paradox_center_cached_apps_sum" android:key="cached_apps_freezer" android:entries="@array/paradox_freezer_entries" android:entryValues="@array/paradox_freezer_values" />
 </PreferenceScreen>
