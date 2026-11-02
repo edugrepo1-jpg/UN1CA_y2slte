@@ -1,11 +1,11 @@
 if [ "$SOURCE_PLATFORM_SDK_VERSION" -ge "36" ]; then
-    # Android 16 moved Knox, DualDAR, SDP and HDM implementation details and
+    # Android 16+ moved Knox, DualDAR, SDP and HDM implementation details and
     # several of their framework classes are shared by non-Knox services.
     # Deleting the legacy class set leaves dangling references. Keep the
     # platform implementation intact and disable only the externally visible
     # services through stable feature gates; KnoxPatch handles integrity
     # compatibility without changing framework ABIs.
-    LOG "- Using non-destructive Android 16 Knox compatibility mode"
+    LOG "- Using non-destructive Android 16+ Knox compatibility mode"
     SET_PROP_IF_DIFF "vendor" "ro.security.fips.ux" "Disabled"
 
     APPLY_PATCH "system" "system/framework/services.jar" \
@@ -161,14 +161,8 @@ APPLY_PATCH "system" "system/priv-app/ManagedProvisioning/ManagedProvisioning.ap
     "$MODPATH/ddar/ManagedProvisioning.apk/0001-Nuke-Knox-DualDAR.patch"
 APPLY_PATCH "system" "system/priv-app/SecSettings/SecSettings.apk" \
     "$MODPATH/ddar/SecSettings.apk/0001-Nuke-Knox-DualDAR.patch"
-if [[ "$SOURCE_PLATFORM_SDK_VERSION" -ge 37 ]]; then
-    # Android17 ships DualDAR 1.9; retain the existing compatibility policy.
-    APPLY_PATCH "system" "system/priv-app/SecSettingsIntelligence/SecSettingsIntelligence.apk" \
-        "$MODPATH/ddar/SecSettingsIntelligence.apk/0002-Android17-compatibility.patch"
-else
 APPLY_PATCH "system" "system/priv-app/SecSettingsIntelligence/SecSettingsIntelligence.apk" \
     "$MODPATH/ddar/SecSettingsIntelligence.apk/0001-Nuke-Knox-DualDAR.patch"
-fi
 APPLY_PATCH "system_ext" "priv-app/StorageManager/StorageManager.apk" \
     "$MODPATH/ddar/StorageManager.apk/0001-Nuke-Knox-DualDAR.patch"
 
@@ -255,12 +249,6 @@ SMALI_PATCH "system" "system/priv-app/SecSettings/SecSettings.apk" \
     > /dev/null
 APPLY_PATCH "system" "system/priv-app/SecSettings/SecSettings.apk" \
     "$MODPATH/hdm/SecSettings.apk/0001-Nuke-Knox-HDM.patch"
-if [[ "$SOURCE_PLATFORM_SDK_VERSION" -ge 37 ]]; then
-    # Android17 changed HDM's version and policy bodies. This exact patch does
-    # not require the legacy version/policy placeholder normalization.
-    APPLY_PATCH "system" "system/priv-app/SecSettingsIntelligence/SecSettingsIntelligence.apk" \
-        "$MODPATH/hdm/SecSettingsIntelligence.apk/0002-Android17-compatibility.patch"
-else
 SMALI_PATCH "system" "system/priv-app/SecSettingsIntelligence/SecSettingsIntelligence.apk" \
     "smali_classes2/com/samsung/android/knox/hdm/HdmManager.smali" "replaceall" \
     "$HDM_VERSION" \
@@ -273,7 +261,6 @@ SMALI_PATCH "system" "system/priv-app/SecSettingsIntelligence/SecSettingsIntelli
     > /dev/null
 APPLY_PATCH "system" "system/priv-app/SecSettingsIntelligence/SecSettingsIntelligence.apk" \
     "$MODPATH/hdm/SecSettingsIntelligence.apk/0001-Nuke-Knox-HDM.patch"
-fi
 SMALI_PATCH "system_ext" "priv-app/StorageManager/StorageManager.apk" \
     "smali/com/samsung/android/knox/hdm/HdmManager.smali" "replaceall" \
     "$HDM_VERSION" \

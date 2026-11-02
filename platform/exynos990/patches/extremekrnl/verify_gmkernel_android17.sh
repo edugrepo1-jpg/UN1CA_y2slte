@@ -33,4 +33,9 @@ require include/uapi/linux/capability.h '#define CAP_CHECKPOINT_RESTORE'
 require include/uapi/linux/capability.h 'CAP_LAST_CAP         CAP_CHECKPOINT_RESTORE'
 require security/selinux/include/classmap.h '"perfmon", "bpf"'
 require security/selinux/include/classmap.h '"checkpoint_restore"'
+
+# The Hub must not report a voltage request as accepted when ACPM rejects it.
+require drivers/soc/samsung/cal-if/fvmap.c '__ATTR(gmhub_checked, 0444, gmhub_checked_show, NULL)'
+require drivers/soc/samsung/cal-if/fvmap.c 'ret = exynos_acpm_set_volt_margin(vclk_id | ACPM_VCLK_TYPE, input);'
+require drivers/soc/samsung/cal-if/fvmap.c 'WRITE_ONCE(percent_margin_table[margin_id], input);'
 echo "GMKernel: Android 17 cgroup2 recursive protection, kill and capability ABIs present"

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" android:title="Undervolt">
+    <com.android.settingslib.widget.LayoutPreference android:key="gm_undervolt_panel" android:layout="@layout/gm_undervolt_panel" android:selectable="false" />
+</PreferenceScreen>

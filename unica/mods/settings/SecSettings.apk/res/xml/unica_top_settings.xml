@@ -9,6 +9,7 @@
     <Preference android:title="@string/gm_hub_kernel_title" android:summary="@string/gm_hub_kernel_name" android:key="gm_hub_kernel" android:selectable="false" />
     <com.samsung.android.settings.widget.SecInsetCategoryPreference />
     <PreferenceCategory android:title="@string/gm_hub_category_paradox" />
+    <Preference android:icon="@drawable/ic_unica_settings_spoof" android:title="Undervolt" android:summary="Ajustes de tensão do GMKernel" android:key="gm_hub_undervolt" android:fragment="com.paradox.hub.UndervoltFragment" />
     <Preference android:icon="@drawable/ic_unica_settings_ui" android:title="@string/gm_glass_title" android:summary="@string/gm_glass_home_summary" android:key="gm_hub_liquid_glass" android:fragment="com.paradox.hub.GlassSettingsFragment" />
     <Preference android:icon="@drawable/ic_unica_settings_ui" android:title="@string/gm_hub_paradox_tweaks" android:key="gm_hub_paradox_tweaks" android:fragment="com.paradox.hub.ParadoxCenterFragment" />
     <Preference android:icon="@drawable/ic_unica_settings_extra" android:title="@string/paradox_core_modes_title" android:key="gm_hub_core_modes" android:fragment="com.paradox.hub.ParadoxCoreModesFragment" />

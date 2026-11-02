@@ -3,7 +3,7 @@ EXTREMEKRNL_REPO="https://github.com/At30c/SSM_990v2BYEXTREME/"
 # r8s uses the user's full GMKernel source; all other targets retain Extreme.
 GMKERNEL_REPO="https://github.com/edugrepo1-jpg/android_kernel_samsung_exynos990.git"
 GMKERNEL_BRANCH="gmkernel-android17-r8s-20261101"
-GMKERNEL_SHA="1c29439b9fae2b3d07fdfb82b5985f1653e24438"
+GMKERNEL_SHA="2fba3af513f2b2e831cc4ddddc0b3a100ecd9f47"
 if [[ "$TARGET_CODENAME" == "r8s" ]]; then
     EXTREMEKRNL_REPO="$GMKERNEL_REPO"
 fi
