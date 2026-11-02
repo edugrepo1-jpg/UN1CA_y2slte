@@ -1,47 +1,27 @@
-GM HUB • build diagnóstico One UI 9 / Android 17 • 2026-11-01
-Maintainer: GMNevz
-Target: Samsung SM-G780F / r8s
+GM HUB One UI 9 / Android 17 - r8s diagnostic build 7 - 2026-11-02
+Requested explicitly by GMNevz after publishing accumulated corrections.
+Target: Samsung SM-G780F / r8s only
 Source firmware: SM-S926B EUX S926BXXSIEZJ1
-Kernel repo: edugrepo1-jpg/android_kernel_samsung_exynos990
+ROM feature/audit commit: 1532bfc49953ea01480be53ffa1542ee239967c9
+Kernel: edugrepo1-jpg/android_kernel_samsung_exynos990
 Kernel branch: gmkernel-android17-r8s-20261101
-GMKernel SHA: 0ac4cc0d535e67fd0ab6a822f303acef1377300f
-Mode: compile (no Pixeldrain, no OTA, no releases)
-Purpose: first actual full ROM/GMKernel build to expose Android 17 source/DEX/vendor incompatibilities.
+Kernel SHA: 2fba3af513f2b2e831cc4ddddc0b3a100ecd9f47
+Mode: compile - GitHub artifacts only; no OTA, Pixeldrain or releases.
 
-Revision: build 2 — integrate AOSP nonofficial keys, ncurses Ubuntu 24.04 fix, 6GiB swap,
-source + GM HUB UI contract tests, private ZIP/boot/dtbo artifacts, failure logs,
-cross-checked firmware and vendor audit documentation.
-Expected flow: GitHub concurrency replaces previous diagnostic run on same branch.
+Includes the corrected compiler bootstrap, Android 17 optical fingerprint/lights
+bridges, Hub compatibility, native camera/recording guards, Pure Black, cached-app
+freezer, r8s DVFS/SSRM and multi-window policy. The three opt-in Liquid Glass
+engines are integrated on the captured QS backdrop. The Undervolt page offers
+CPU A55/A76/M5, GPU and RAM from 0 to -10 percent in 1-percent steps with explicit
+root-backed application and kernel acknowledgement. No automatic voltage preset,
+boot-time margin or charging change is applied by this page.
 
-Revision: diagnostic build 3, 2026-11-01.
-Fix the confirmed EZJ1 Pure Black blocker: One UI 9-safe discovery of actual
-dark resources, night-only aliases/overlays, validation of resource uniqueness,
-and recorded map in build artifacts.
-Preflight now includes GM HUB, pure-black, OneLab SSRM, and QS adaptation tests.
-No external ROM release / no OTA publishing. User GMNevz-owned GMKernel unchanged.
+Pre-build evidence: 133 host tests passed; 109 Hub classes assembled to DEX and
+3064 exact Samsung/API references resolved. Exact camera native patch sequence,
+recording-library branch and active GEMALTO eSE customization passed retained
+firmware inputs. The changed kernel sysfs store passed native host tests.
+Linux compiler bootstrap passed in the previous source-input inspection.
 
-Revision: diagnostic build 4, GM HUB One UI 9, 2026-11-01.
-Previous full run 41340161531 failed on the legacy QSAnimView.setAlpha(F)V
-contract, AFTER GMKernel/KSU, firmware, graphics, ART, Pure Black and SSRM
-passed. QS optimization now preserves unknown One UI 9 donor layouts.
-The one stale SSRM test expectation has been updated.
-Pure Black now excludes cover/subscreen, avatars and media imagery.
-Preflight validates all One UI9, GM HUB, Pure Black, OneLab SSRM and
-Python/shell source contracts before expensive ROM compilation.
-No OTA / no release; preserve diagnostic outputs.
-
-Revision: diagnostic build 5, 2026-11-01.
-Carry all preflight fixes in ONE pinned build:
-- Changed One UI 9 QSAnimView.setAlpha ABI is treated as an optional
-  optimization, keeping SystemUI's original class untouched.
-- Align SSRM error-message contract with new EZJ1 diagnostics.
-- Pure Black only alters dark QS / main notification backgrounds, never cover,
-  subscreen, avatars, media artwork or unrelated notifications.
-- GM HUB uses only source-bundled icon drawables; prevent donor-specific
-  missing resource errors during SecSettings aapt2 compilation.
-- Source contracts run all r8s feature tests and Python/shell compilation
-  checks before the costly donor extraction and full APK/ROM packaging.
-- Keep the exact GMKernel/KSU pin and do not publish an unverified release.
-
-Revision: diagnostic build 6, 2026-11-02.
-Trigger requested full GM HUB One UI 9 r8s compile on GitHub Actions; no release publication.
+Known scope: full Apple QS and systemwide Liquid Glass expansion remain pending.
+This build is not proof of boot, runtime linker namespaces, physical hardware
+behavior or measured performance. Preserve diagnostic artifacts for review.
