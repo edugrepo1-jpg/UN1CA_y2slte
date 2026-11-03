@@ -364,6 +364,9 @@ if $BUILD_ROM; then
     # Validate the final tree after every module, including ROM mods. The
     # donor's permissions/configuration must not silently hide r8s hardware.
     if [[ "$TARGET_CODENAME" == "r8s" && "$SOURCE_PLATFORM_SDK_VERSION" -ge 37 ]]; then
+        # Target vendor files follow platform WFD patches. Finalize the exact
+        # device-validated boot stack after all potential manifest overwrites.
+        python3 "$SRC_DIR/target/r8s/finalize_boot_graphics.py" "$WORK_DIR" || exit 1
         python3 "$SRC_DIR/target/r8s/validate_hardware_inputs.py" \
             "$FW_DIR/$TARGET_FIRMWARE_PATH" "$WORK_DIR" || exit 1
     fi
