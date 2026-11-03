@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # [
-source "$SRC_DIR/scripts/utils/build_utils.sh" || exit 1
+source "$SRC_DIR/scripts/utils/install_utils.sh" || exit 1
 
 SOURCE_FIRMWARE_PATH="$(cut -d "/" -f 1 -s <<< "$SOURCE_FIRMWARE")_$(cut -d "/" -f 2 -s <<< "$SOURCE_FIRMWARE")"
 TARGET_FIRMWARE_PATH="$(cut -d "/" -f 1 -s <<< "$TARGET_FIRMWARE")_$(cut -d "/" -f 2 -s <<< "$TARGET_FIRMWARE")"
@@ -255,6 +255,37 @@ GENERATE_OTA_METADATA()
     } > "$TMP_DIR/META-INF/com/android/metadata"
 }
 
+# Resolve raw firmware destinations from the same recovery partition map used
+# by the full/incremental OTA generators. Never accept a mountpoint such as
+# /boot as a regular file destination: that silently leaves the old kernel.
+RESOLVE_RAW_IMAGE_DEVICE()
+{
+    local DEVICE
+    DEVICE="$(GET_DEVICE_FROM_MOUNTPOINT "$1")" || return 1
+    if [[ ! "$DEVICE" =~ ^\"/dev/block/[A-Za-z0-9_./-]+\"$ ]] || [[ "$DEVICE" == *"/../"* ]]; then
+        LOGE "Invalid raw image block device for $1: $DEVICE"
+        return 1
+    fi
+    printf '%s\n' "$DEVICE"
+}
+
+PRINT_RAW_IMAGE_INSTALL()
+{
+    local IMAGE="$1" MOUNTPOINT="$2" DEVICE SIZE DIGEST
+    DEVICE="$(RESOLVE_RAW_IMAGE_DEVICE "$MOUNTPOINT")" || return 1
+    SIZE="$(stat -c%s "$TMP_DIR/$IMAGE")" || return 1
+    DIGEST="$(sha256sum "$TMP_DIR/$IMAGE")" || return 1
+    DIGEST="${DIGEST%% *}"
+    [[ "$SIZE" =~ ^[1-9][0-9]*$ && "$DIGEST" =~ ^[a-f0-9]{64}$ ]] || return 1
+    printf 'assert(package_extract_file("%s", %s));\n' "$IMAGE" "$DEVICE"
+    if [[ "$TARGET_CODENAME" == "r8s" ]]; then
+        # The modern updater has no apply_patch_check/sha1_check functions.
+        # Verify exactly the payload bytes using this target's TWRP shell.
+        printf 'assert(run_program("/sbin/sh", "-c", "head -c %s %s | sha256sum | grep -q ^%s") == 0);\n' \
+            "$SIZE" "${DEVICE:1:-1}" "$DIGEST"
+    fi
+}
+
 GENERATE_UPDATER_SCRIPT()
 {
     local SCRIPT_FILE="$TMP_DIR/META-INF/com/google/android/updater-script"
@@ -293,6 +324,15 @@ GENERATE_UPDATER_SCRIPT()
     [ -f "$TMP_DIR/vendor_dlkm.new.dat${BROTLI_EXTENSION}" ] && HAS_VENDOR_DLKM=true && PARTITION_COUNT=$((PARTITION_COUNT + 1))
     [ -f "$TMP_DIR/odm_dlkm.new.dat${BROTLI_EXTENSION}" ] && HAS_ODM_DLKM=true && PARTITION_COUNT=$((PARTITION_COUNT + 1))
     [ -f "$TMP_DIR/system_dlkm.new.dat${BROTLI_EXTENSION}" ] && HAS_SYSTEM_DLKM=true && PARTITION_COUNT=$((PARTITION_COUNT + 1))
+
+    # Validate every raw destination before emitting partition writes.
+    local RAW_IMAGE RAW_MOUNT
+    for RAW_IMAGE in dtbo.img init_boot.img vendor_boot.img boot.img up_param.bin; do
+        [ -f "$TMP_DIR/$RAW_IMAGE" ] || continue
+        $HAS_LK3RD && [[ "$RAW_IMAGE" == "boot.img" ]] && continue
+        RAW_MOUNT="/${RAW_IMAGE%.*}"
+        RESOLVE_RAW_IMAGE_DEVICE "$RAW_MOUNT" > /dev/null || return 1
+    done
 
     {
         if [ -n "$TARGET_ASSERT_MODEL" ]; then
@@ -406,21 +446,15 @@ GENERATE_UPDATER_SCRIPT()
         echo -e "\n# --- End patching dynamic partitions ---\n"
         if $HAS_DTBO; then
             echo    'ui_print("Full Patching dtbo.img img...");'
-            echo -n 'package_extract_file("dtbo.img", "'
-            echo -n "$TARGET_OS_BOOT_DEVICE_PATH"
-            echo    '/dtbo");'
+            PRINT_RAW_IMAGE_INSTALL "dtbo.img" "/dtbo" || return 1
         fi
         if $HAS_INIT_BOOT; then
             echo    'ui_print("Full Patching init_boot.img img...");'
-            echo -n 'package_extract_file("init_boot.img", "'
-            echo -n "$TARGET_OS_BOOT_DEVICE_PATH"
-            echo    '/init_boot");'
+            PRINT_RAW_IMAGE_INSTALL "init_boot.img" "/init_boot" || return 1
         fi
         if $HAS_VENDOR_BOOT; then
             echo    'ui_print("Full Patching vendor_boot.img img...");'
-            echo -n 'package_extract_file("vendor_boot.img", "'
-            echo -n "$TARGET_OS_BOOT_DEVICE_PATH"
-            echo    '/vendor_boot");'
+            PRINT_RAW_IMAGE_INSTALL "vendor_boot.img" "/vendor_boot" || return 1
         fi
         if $HAS_LK3RD; then
             cp -a "$SRC_DIR/prebuilts/extras/setup-boot.sh" "$TMP_DIR/setup-boot.sh"
@@ -437,15 +471,11 @@ GENERATE_UPDATER_SCRIPT()
         fi
         if ! $HAS_LK3RD && $HAS_BOOT; then
             echo    'ui_print("Installing boot image...");'
-            echo -n 'package_extract_file("boot.img", "'
-            echo -n "$TARGET_OS_BOOT_DEVICE_PATH"
-            echo    '/boot");'
+            PRINT_RAW_IMAGE_INSTALL "boot.img" "/boot" || return 1
         fi
         if $HAS_UP_PARAM; then
             echo    'ui_print("Installing up_param image...");'
-            echo -n 'package_extract_file("up_param.bin", "'
-            echo -n "$TARGET_OS_BOOT_DEVICE_PATH"
-            echo    '/up_param");'
+            PRINT_RAW_IMAGE_INSTALL "up_param.bin" "/up_param" || return 1
         fi
 
         if [ -f "$SRC_DIR/target/$TARGET_CODENAME/installer/install-end.edify" ]; then
