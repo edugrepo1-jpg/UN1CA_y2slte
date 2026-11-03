@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # [
-source "$SRC_DIR/scripts/utils/build_utils.sh" || exit 1
+source "$SRC_DIR/scripts/utils/install_utils.sh" || exit 1
 
 SOURCE_FIRMWARE_PATH="$(cut -d "/" -f 1 -s <<< "$SOURCE_FIRMWARE")_$(cut -d "/" -f 2 -s <<< "$SOURCE_FIRMWARE")"
 TARGET_FIRMWARE_PATH="$(cut -d "/" -f 1 -s <<< "$TARGET_FIRMWARE")_$(cut -d "/" -f 2 -s <<< "$TARGET_FIRMWARE")"
@@ -211,12 +211,16 @@ GENERATE_OTA_METADATA()
     local PROTO_FILE="$SRC_DIR/external/android-tools/vendor/build/tools/releasetools/ota_metadata.proto"
 
     local INCREMENTAL
-    local RELEASE
+    local SDK_LEVEL
     local SECURITY_PATCH_LEVEL
     local TIMESTAMP
 
     INCREMENTAL="$(GET_PROP "system" "ro.build.version.incremental")"
-    RELEASE="$(GET_PROP "system" "ro.build.version.release")"
+    SDK_LEVEL="$(GET_PROP "system" "ro.build.version.sdk")" || return 1
+    if [[ ! "$SDK_LEVEL" =~ ^[0-9]+$ ]] || [ "$SDK_LEVEL" -lt 1 ]; then
+        LOGE "Invalid platform SDK for OTA metadata: $SDK_LEVEL"
+        return 1
+    fi
     SECURITY_PATCH_LEVEL="$(GET_PROP "system" "ro.build.version.security_patch")"
     TIMESTAMP="$(GET_PROP "system" "ro.build.date.utc")"
 
@@ -232,7 +236,7 @@ GENERATE_OTA_METADATA()
         MESSAGE+=", build: \\\"$SOURCE_FINGERPRINT\\\""
         MESSAGE+=", build_incremental: \\\"$INCREMENTAL\\\""
         MESSAGE+=", timestamp: $TIMESTAMP"
-        MESSAGE+=", sdk_level: \\\"$RELEASE\\\""
+        MESSAGE+=", sdk_level: \\\"$SDK_LEVEL\\\""
         MESSAGE+=", security_patch_level: \\\"$SECURITY_PATCH_LEVEL\\\"}"
 
         EVAL "protoc --encode=build.tools.releasetools.OtaMetadata --proto_path=\"$(dirname "$PROTO_FILE")\" \"$PROTO_FILE\" <<< \"$MESSAGE\" > \"$TMP_DIR/META-INF/com/android/metadata.pb\"" || exit 1
@@ -244,11 +248,42 @@ GENERATE_OTA_METADATA()
         echo "ota-type=BLOCK"
         echo "post-build=$SOURCE_FINGERPRINT"
         echo "post-build-incremental=$INCREMENTAL"
-        echo "post-sdk-level=$RELEASE"
+        echo "post-sdk-level=$SDK_LEVEL"
         echo "post-security-patch-level=$SECURITY_PATCH_LEVEL"
         echo "post-timestamp=$TIMESTAMP"
         echo "pre-device=$TARGET_CODENAME"
     } > "$TMP_DIR/META-INF/com/android/metadata"
+}
+
+# Resolve raw firmware destinations from the same recovery partition map used
+# by the full/incremental OTA generators. Never accept a mountpoint such as
+# /boot as a regular file destination: that silently leaves the old kernel.
+RESOLVE_RAW_IMAGE_DEVICE()
+{
+    local DEVICE
+    DEVICE="$(GET_DEVICE_FROM_MOUNTPOINT "$1")" || return 1
+    if [[ ! "$DEVICE" =~ ^\"/dev/block/[A-Za-z0-9_./-]+\"$ ]] || [[ "$DEVICE" == *"/../"* ]]; then
+        LOGE "Invalid raw image block device for $1: $DEVICE"
+        return 1
+    fi
+    printf '%s\n' "$DEVICE"
+}
+
+PRINT_RAW_IMAGE_INSTALL()
+{
+    local IMAGE="$1" MOUNTPOINT="$2" DEVICE SIZE DIGEST
+    DEVICE="$(RESOLVE_RAW_IMAGE_DEVICE "$MOUNTPOINT")" || return 1
+    SIZE="$(stat -c%s "$TMP_DIR/$IMAGE")" || return 1
+    DIGEST="$(sha256sum "$TMP_DIR/$IMAGE")" || return 1
+    DIGEST="${DIGEST%% *}"
+    [[ "$SIZE" =~ ^[1-9][0-9]*$ && "$DIGEST" =~ ^[a-f0-9]{64}$ ]] || return 1
+    printf 'assert(package_extract_file("%s", %s));\n' "$IMAGE" "$DEVICE"
+    if [[ "$TARGET_CODENAME" == "r8s" ]]; then
+        # The modern updater has no apply_patch_check/sha1_check functions.
+        # Verify exactly the payload bytes using this target's TWRP shell.
+        printf 'assert(run_program("/sbin/sh", "-c", "head -c %s %s | sha256sum | grep -q ^%s") == 0);\n' \
+            "$SIZE" "${DEVICE:1:-1}" "$DIGEST"
+    fi
 }
 
 GENERATE_UPDATER_SCRIPT()
@@ -289,6 +324,15 @@ GENERATE_UPDATER_SCRIPT()
     [ -f "$TMP_DIR/vendor_dlkm.new.dat${BROTLI_EXTENSION}" ] && HAS_VENDOR_DLKM=true && PARTITION_COUNT=$((PARTITION_COUNT + 1))
     [ -f "$TMP_DIR/odm_dlkm.new.dat${BROTLI_EXTENSION}" ] && HAS_ODM_DLKM=true && PARTITION_COUNT=$((PARTITION_COUNT + 1))
     [ -f "$TMP_DIR/system_dlkm.new.dat${BROTLI_EXTENSION}" ] && HAS_SYSTEM_DLKM=true && PARTITION_COUNT=$((PARTITION_COUNT + 1))
+
+    # Validate every raw destination before emitting partition writes.
+    local RAW_IMAGE RAW_MOUNT
+    for RAW_IMAGE in dtbo.img init_boot.img vendor_boot.img boot.img up_param.bin; do
+        [ -f "$TMP_DIR/$RAW_IMAGE" ] || continue
+        $HAS_LK3RD && [[ "$RAW_IMAGE" == "boot.img" ]] && continue
+        RAW_MOUNT="/${RAW_IMAGE%.*}"
+        RESOLVE_RAW_IMAGE_DEVICE "$RAW_MOUNT" > /dev/null || return 1
+    done
 
     {
         if [ -n "$TARGET_ASSERT_MODEL" ]; then
@@ -402,21 +446,15 @@ GENERATE_UPDATER_SCRIPT()
         echo -e "\n# --- End patching dynamic partitions ---\n"
         if $HAS_DTBO; then
             echo    'ui_print("Full Patching dtbo.img img...");'
-            echo -n 'package_extract_file("dtbo.img", "'
-            echo -n "$TARGET_OS_BOOT_DEVICE_PATH"
-            echo    '/dtbo");'
+            PRINT_RAW_IMAGE_INSTALL "dtbo.img" "/dtbo" || return 1
         fi
         if $HAS_INIT_BOOT; then
             echo    'ui_print("Full Patching init_boot.img img...");'
-            echo -n 'package_extract_file("init_boot.img", "'
-            echo -n "$TARGET_OS_BOOT_DEVICE_PATH"
-            echo    '/init_boot");'
+            PRINT_RAW_IMAGE_INSTALL "init_boot.img" "/init_boot" || return 1
         fi
         if $HAS_VENDOR_BOOT; then
             echo    'ui_print("Full Patching vendor_boot.img img...");'
-            echo -n 'package_extract_file("vendor_boot.img", "'
-            echo -n "$TARGET_OS_BOOT_DEVICE_PATH"
-            echo    '/vendor_boot");'
+            PRINT_RAW_IMAGE_INSTALL "vendor_boot.img" "/vendor_boot" || return 1
         fi
         if $HAS_LK3RD; then
             cp -a "$SRC_DIR/prebuilts/extras/setup-boot.sh" "$TMP_DIR/setup-boot.sh"
@@ -433,15 +471,11 @@ GENERATE_UPDATER_SCRIPT()
         fi
         if ! $HAS_LK3RD && $HAS_BOOT; then
             echo    'ui_print("Installing boot image...");'
-            echo -n 'package_extract_file("boot.img", "'
-            echo -n "$TARGET_OS_BOOT_DEVICE_PATH"
-            echo    '/boot");'
+            PRINT_RAW_IMAGE_INSTALL "boot.img" "/boot" || return 1
         fi
         if $HAS_UP_PARAM; then
             echo    'ui_print("Installing up_param image...");'
-            echo -n 'package_extract_file("up_param.bin", "'
-            echo -n "$TARGET_OS_BOOT_DEVICE_PATH"
-            echo    '/up_param");'
+            PRINT_RAW_IMAGE_INSTALL "up_param.bin" "/up_param" || return 1
         fi
 
         if [ -f "$SRC_DIR/target/$TARGET_CODENAME/installer/install-end.edify" ]; then
@@ -539,8 +573,8 @@ SIGN_IMAGE_WITH_AVB()
 # ]
 
 [ -d "$TMP_DIR" ] && rm -rf "$TMP_DIR"
-mkdir -p "$TMP_DIR/META-INF/com/google/android"
-cp -a "$SRC_DIR/prebuilts/bootable/deprecated-ota/updater" "$TMP_DIR/META-INF/com/google/android/update-binary"
+mkdir -p "$TMP_DIR/META-INF/com/google/android" || exit 1
+cp -a "$SRC_DIR/prebuilts/bootable/deprecated-ota/updater" "$TMP_DIR/META-INF/com/google/android/update-binary" || exit 1
 
 LOG_STEP_IN "- Building OS partitions"
 while IFS= read -r f; do
@@ -589,7 +623,7 @@ if [ -d "$WORK_DIR/kernel" ]; then
 
         LOG_STEP_IN "- Copying $IMG"
 
-        cp -a "$WORK_DIR/kernel/$IMG" "$TMP_DIR/$IMG"
+        cp -a "$WORK_DIR/kernel/$IMG" "$TMP_DIR/$IMG" || exit 1
 
         if ! $TARGET_DISABLE_AVB_SIGNING; then
             SIGN_IMAGE_WITH_AVB "$TMP_DIR/$IMG"
@@ -602,17 +636,17 @@ fi
 
 if [ -f "$WORK_DIR/up_param.bin" ]; then
     LOG "- Copying up_param.bin"
-    cp -a "$WORK_DIR/up_param.bin" "$TMP_DIR/up_param.bin"
+    cp -a "$WORK_DIR/up_param.bin" "$TMP_DIR/up_param.bin" || exit 1
 fi
 
 LOG "- Generating updater-script"
-GENERATE_UPDATER_SCRIPT
+GENERATE_UPDATER_SCRIPT || exit 1
 
 LOG "- Generating build_info.txt"
-GENERATE_BUILD_INFO
+GENERATE_BUILD_INFO || exit 1
 
 LOG "- Generating OTA metadata"
-GENERATE_OTA_METADATA
+GENERATE_OTA_METADATA || exit 1
 
 if [ -d "$SRC_DIR/target/$TARGET_CODENAME/installer/root" ]; then
     LOG "- Copying target custom install files"
@@ -644,7 +678,7 @@ if ! $DEBUG || $ROM_IS_OFFICIAL; then
     EVAL "signapk -w \"$PUBLIC_KEY_PATH\" \"$PRIVATE_KEY_PATH\" \"$TMP_DIR/rom.zip\" \"$OUT_DIR/$ZIP_FILE_NAME\"" || exit 1
     rm -f "$TMP_DIR/rom.zip"
 else
-    mv -f "$TMP_DIR/rom.zip" "$OUT_DIR/$ZIP_FILE_NAME"
+    mv -f "$TMP_DIR/rom.zip" "$OUT_DIR/$ZIP_FILE_NAME" || exit 1
 fi
 
 exit 0

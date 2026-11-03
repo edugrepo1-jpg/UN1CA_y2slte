@@ -135,7 +135,10 @@ for i in "${FIRMWARES[@]}"; do
         CONFIGURED_FIRMWARE="$TARGET_FIRMWARE_VERSION"
     fi
 
-    LATEST_FIRMWARE="$(GET_LATEST_FIRMWARE "$MODEL" "$CSC")"
+    LATEST_FIRMWARE=""
+    if [ -z "$REQUESTED_FIRMWARE" ] && [ -z "$CONFIGURED_FIRMWARE" ]; then
+        LATEST_FIRMWARE="$(GET_LATEST_FIRMWARE "$MODEL" "$CSC")"
+    fi
     if [ ! "$LATEST_FIRMWARE" ] && [ -z "$REQUESTED_FIRMWARE" ] && [ -z "$CONFIGURED_FIRMWARE" ]; then
         LOGE "Latest available firmware could not be fetched"
         exit 1
@@ -155,7 +158,10 @@ for i in "${FIRMWARES[@]}"; do
     if ! $FORCE; then
         # Skip if firmware has been extracted and equal/newer than the one in FUS
         if [ -f "$FW_DIR/${MODEL}_${CSC}/.extracted" ]; then
-            if COMPARE_SEC_BUILD_VERSION "$(cat "$FW_DIR/${MODEL}_${CSC}/.extracted")" "$DOWNLOAD_FIRMWARE"; then
+            if { [ -n "$REQUESTED_FIRMWARE$CONFIGURED_FIRMWARE" ] &&
+                    FIRMWARE_VERSIONS_EQUAL "$(cat "$FW_DIR/${MODEL}_${CSC}/.extracted")" "$DOWNLOAD_FIRMWARE"; } ||
+                    { [ -z "$REQUESTED_FIRMWARE$CONFIGURED_FIRMWARE" ] &&
+                    COMPARE_SEC_BUILD_VERSION "$(cat "$FW_DIR/${MODEL}_${CSC}/.extracted")" "$DOWNLOAD_FIRMWARE"; }; then
                 LOG "\033[0;33m! This firmware has already been extracted, skipping\033[0m"
                 LOG_STEP_OUT; LOG_STEP_OUT
                 continue
@@ -164,6 +170,11 @@ for i in "${FIRMWARES[@]}"; do
 
         # Skip if firmware has already been downloaded
         if [ -f "$ODIN_DIR/${MODEL}_${CSC}/.downloaded" ]; then
+            if [ -n "$REQUESTED_FIRMWARE$CONFIGURED_FIRMWARE" ] &&
+                    ! FIRMWARE_VERSIONS_EQUAL "$(cat "$ODIN_DIR/${MODEL}_${CSC}/.downloaded")" "$DOWNLOAD_FIRMWARE"; then
+                LOGE "Cached firmware differs from the requested pin; use --force to download $DOWNLOAD_FIRMWARE"
+                exit 1
+            fi
             if ! COMPARE_SEC_BUILD_VERSION "$(cat "$ODIN_DIR/${MODEL}_${CSC}/.downloaded")" "$DOWNLOAD_FIRMWARE"; then
                 LOG "\033[0;33m! A newer firmware is available for download, use --force flag if you want to overwrite it\033[0m"
             else

@@ -12,7 +12,11 @@ system/lib64/libDualCamBokehCapture.camera.samsung.so
 "
 for blob in $BLOBS_LIST
 do
-    DELETE_FROM_WORK_DIR "system" "$blob" &
+    # These optional donor implementations moved or disappeared on One UI 9.
+    # Remove an existing legacy file without reporting an absent file as a fault.
+    if [ -e "$WORK_DIR/system/$blob" ]; then
+        DELETE_FROM_WORK_DIR "system" "$blob" &
+    fi
 done
 
 # shellcheck disable=SC2046
@@ -275,3 +279,10 @@ done
 wait $(jobs -p) || exit 1
 
 LOG_STEP_OUT
+
+# ArtisanROM f6c39fcb: the r8s vendor encoder survives across recording sessions.
+if [[ "$TARGET_CODENAME" == "r8s" ]]; then
+    python3 "$MODPATH/patch_recording_timestamp.py" \
+        "$WORK_DIR/vendor/lib/libstagefright_bufferqueue_helper_vendor.so" || \
+        ABORT "Could not apply the stock r8s recording timestamp correction"
+fi

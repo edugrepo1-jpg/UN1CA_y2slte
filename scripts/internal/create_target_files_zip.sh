@@ -53,6 +53,12 @@ BUILD_SUPER_EMPTY()
 GENERATE_BUILD_INFO()
 {
     local BUILD_INFO_FILE="$TMP_DIR/build_info.txt"
+    local SDK_LEVEL
+    SDK_LEVEL="$(GET_PROP "system" "ro.build.version.sdk")" || return 1
+    if [[ ! "$SDK_LEVEL" =~ ^[0-9]+$ ]] || [ "$SDK_LEVEL" -lt 1 ]; then
+        LOGE "Invalid platform SDK for target-files: $SDK_LEVEL"
+        return 1
+    fi
 
     local SOURCE_FIRMWARE_PATH
     local TARGET_FIRMWARE_PATH
@@ -77,6 +83,7 @@ GENERATE_BUILD_INFO()
         echo -n "timestamp="
         [ "$(GET_PROP "system" "ro.unica.timestamp")" ] && GET_PROP "system" "ro.unica.timestamp" || echo "$ROM_BUILD_TIMESTAMP"
         echo "os_version=$(GET_PROP "system" "ro.build.version.release")"
+        echo "platform_sdk_version=$SDK_LEVEL"
         echo "oneui_version=$(GET_PROP "system" "ro.build.version.oneui")"
         echo "build_incremental=$(GET_PROP "system" "ro.build.version.incremental")"
         echo "build_date=$(GET_PROP "system" "ro.build.date.utc")"
@@ -155,7 +162,7 @@ if [ -d "$WORK_DIR/kernel" ]; then
 fi
 
 LOG "- Generating build_info.txt"
-GENERATE_BUILD_INFO
+GENERATE_BUILD_INFO || exit 1
 
 LOG "- Creating zip"
 rm -f "$OUTPUT_FILE"

@@ -1,0 +1,54 @@
+name: GM HUB One UI 9 source contracts
+
+on:
+  push:
+    branches: [gmhub-oneui9-r8s-20261101]
+  pull_request:
+    branches: [sixteen]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Keep only the latest source audit on this development branch. Full ROM builds
+# have a separate workflow name and are never cancelled by this audit.
+concurrency:
+  group: gmhub-source-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/prebuilts/
+      - name: Validate Android 17 donor, GMKernel, r8s geometry and workflow
+        run: |
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Preflight all r8s patch entrypoints and Python source syntax
+        run: |
+          set -euo pipefail
+          python3 -m compileall -q target/r8s tests
+          find target/r8s/patches -name customize.sh -type f -print0 |
+            xargs -0 -r -n 1 bash -n
+          bash -n platform/exynos990/patches/extremekrnl/customize.sh
+          bash -n unica/mods/settings/customize.sh
+      - name: Validate already-integrated Android 17 kernel ABI in pinned GMKernel
+        run: |
+          set -euo pipefail
+          GM_REPO=https://github.com/edugrepo1-jpg/android_kernel_samsung_exynos990.git
+          GM_BRANCH=gmkernel-android17-r8s-20261101
+          GM_SHA=2fba3af513f2b2e831cc4ddddc0b3a100ecd9f47
+          git clone --depth 1 --single-branch --branch "$GM_BRANCH" "$GM_REPO" "$RUNNER_TEMP/gmkernel-check"
+          test "$(git -C "$RUNNER_TEMP/gmkernel-check" rev-parse HEAD)" = "$GM_SHA"
+          DEFCONFIG="$RUNNER_TEMP/gmkernel-check/arch/arm64/configs/exynos9830_defconfig"
+          grep -Fxq "CONFIG_KSU=y" "$DEFCONFIG"
+          test "$(grep -Fc 'CONFIG_SND_USB_AUDIO=y' "$DEFCONFIG")" -eq 1
+          test "$(grep -Fc '# CONFIG_KSU is not set' "$DEFCONFIG")" -eq 0
+          bash platform/exynos990/patches/extremekrnl/verify_gmkernel_android17.sh \
+            "$RUNNER_TEMP/gmkernel-check"
+          python3 scripts/internal/verify_gmkernel_charging.py "$RUNNER_TEMP/gmkernel-check" --require-cc

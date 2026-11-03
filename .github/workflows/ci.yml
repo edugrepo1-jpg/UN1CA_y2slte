@@ -2,8 +2,6 @@ name: CI
 
 on:
   workflow_dispatch:
-    branches:
-      - 'sixteen'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -12,6 +10,8 @@ concurrency:
 jobs:
   shellcheck:
     name: Shellcheck
+    # workflow_dispatch has no branches filter; retain the original scope here.
+    if: github.ref == 'refs/heads/sixteen'
     runs-on: ubuntu-24.04
 
     steps:
@@ -84,8 +84,18 @@ jobs:
           DEBIAN_FRONTEND=noninteractive sudo apt install -yq \
             attr ccache clang ffmpeg libbrotli-dev libbz2-dev \
             libgtest-dev libprotobuf-dev libunwind-dev libpcre2-dev \
-            libzstd-dev linux-modules-extra-$(uname -r) lld protobuf-compiler webp
-          sudo modprobe erofs f2fs
+            libzstd-dev kmod lld protobuf-compiler webp
+          # New Ubuntu kernels fold extras into the main modules package.
+          # Installing a nonexistent extras package must not abort all tools.
+          EXTRA_MODULES="linux-modules-extra-$(uname -r)"
+          if apt-cache show "$EXTRA_MODULES" >/dev/null 2>&1; then
+            DEBIAN_FRONTEND=noninteractive sudo apt install -yq "$EXTRA_MODULES"
+          fi
+          sudo modprobe -a erofs f2fs
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          source "$HOME/.cargo/env"
+          rustc --version
+          cargo --version
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           echo -n "${{ secrets.PLATFORM_KEY_PK8 }}" | base64 --decode > security/unica_platform.pk8

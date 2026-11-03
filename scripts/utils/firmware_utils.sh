@@ -3,6 +3,7 @@
 
 # [
 source "$SRC_DIR/scripts/utils/build_utils.sh" || return 1
+source "$SRC_DIR/scripts/utils/firmware_identity_utils.sh" || return 1
 # ]
 
 # COMPARE_SEC_BUILD_VERSION <string1> <string2>

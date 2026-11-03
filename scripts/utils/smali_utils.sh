@@ -114,11 +114,14 @@ SMALI_PATCH()
     fi
 
     # Check if provided method is method and exists inside smali
-    if ! grep "^\.method.*" "$FILE_PATH/$SMALI" | grep -q -F -- "$METHOD" "$FILE_PATH/$SMALI"; then
+    if [[ "$OPERATION" != "replaceall" ]] && ! awk -v needle="$METHOD" '
+        $1 == ".method" && $NF == needle { count++ }
+        END { exit count != 1 }
+    ' "$FILE_PATH/$SMALI"; then
         LOGE "Method \"$METHOD\" not found in /$PARTITION/$FILE/$SMALI"
 
         local MATCHES
-        MATCHES="$(grep -r "^\.method.*$METHOD" "$FILE_PATH")"
+        MATCHES="$(grep -r '^\.method' "$FILE_PATH" | grep -F -- "$METHOD" || true)"
 
         if [ "$MATCHES" ]; then
             echo -e "\n\033[0;31mPossible matches?" >&2
@@ -131,6 +134,26 @@ SMALI_PATCH()
         return 1
     fi
 
+    # Native and abstract declarations cannot contain a DEX code item. Leaving
+    # those modifiers while inserting a body builds an invalid method. Likewise
+    # an instance constructor cannot return before its superclass is initialized.
+    if [[ "$OPERATION" == "null" || "$OPERATION" == "return" ]]; then
+        if awk -v needle="$METHOD" '
+            $1 == ".method" && $NF == needle {
+                for (i = 2; i < NF; i++)
+                    if ($i == "native" || $i == "abstract") found = 1
+            }
+            END { exit !found }
+        ' "$FILE_PATH/$SMALI"; then
+            LOGE "Cannot replace the body of native/abstract method \"$METHOD\""
+            return 1
+        fi
+        if [[ "$METHOD" == '<init>('* ]]; then
+            LOGE "Cannot erase constructor initialization in \"$METHOD\""
+            return 1
+        fi
+    fi
+
     local BEFORE
     local AFTER
 
@@ -139,8 +162,8 @@ SMALI_PATCH()
     # Remove the method completely
     if [[ "$OPERATION" == "strip" ]]; then
         local USED
-        USED="$(grep -r -n -- "invoke.*$(basename "$SMALI" | cut -d "." -f "1");" "$FILE_PATH")"
-        USED="$(grep -F "$METHOD" <<< "$USED" | cut -d ":" -f 1-2)"
+        USED="$(grep -r -n -- "invoke.*$(basename "$SMALI" | cut -d "." -f "1");" "$FILE_PATH" || true)"
+        USED="$(grep -F "$METHOD" <<< "$USED" | cut -d ":" -f 1-2 || true)"
 
         if [ "$USED" ]; then
             LOGE "Cannot strip method \"$METHOD\" in /$PARTITION/$FILE/$SMALI as it is used elsewhere"
@@ -155,22 +178,17 @@ SMALI_PATCH()
         LOG "- Stripping method \"$METHOD\" in /$PARTITION/$FILE/$SMALI"
 
         awk -v FN="$METHOD" '
-            BEGIN { inside = 0; skip = 0 }
-            /^\.method/ && index($0, FN) {
+            BEGIN { inside = 0 }
+            $1 == ".method" && $NF == FN {
                 inside = 1
                 next
             }
             inside && /^\.end method/ {
                 inside = 0
-                skip = 1
                 next
             }
             inside { next }
             {
-                if (skip) {
-                    skip = 0
-                    next
-                }
                 print
             }
         ' "$FILE_PATH/$SMALI" > "$FILE_PATH/$SMALI.tmp" && \
@@ -198,7 +216,7 @@ SMALI_PATCH()
 
         awk -v FN="$METHOD" -v LOC="$LOC" -v RET="$RET" '
             BEGIN { inside = 0 }
-            /^\.method/ && index($0, FN) {
+            $1 == ".method" && $NF == FN {
                 print
                 print "    " LOC
                 print "    "
@@ -218,8 +236,8 @@ SMALI_PATCH()
 
         AFTER="$(sha1sum "$FILE_PATH/$SMALI")"
         if [[ "$BEFORE" == "$AFTER" ]]; then
-            LOGE "Failed to nullify method \"$METHOD\" in /$PARTITION/$FILE/$SMALI"
-            return 1
+            LOG "- Method \"$METHOD\" is already nullified; skipping"
+            return 0
         fi
     # Replace the method contents with a single return
     elif [[ "$OPERATION" == "return" ]]; then
@@ -227,25 +245,22 @@ SMALI_PATCH()
         local REG
         local LOC
 
-        # Decide on register
-        REG="p0"
-        LOC=".locals 0"
-        if [[ "$(grep "^\.method.*" "$FILE_PATH/$SMALI" | \
-                    grep -F -- "$METHOD" "$FILE_PATH/$SMALI")" == *" static "* ]] && \
-                [[ "$METHOD" == *"()"* ]]; then
-            REG="v0"
-            LOC=".locals 1"
-        fi
-
         # Decide return type
         RET="${METHOD#*)}"
+        # Dedicated locals work for instance/static methods with any parameter
+        # list. J/D require a pair even for a static zero-argument method.
+        REG="v0"
+        LOC=".locals 1"
+        if [[ "$RET" == "J" || "$RET" == "D" ]]; then
+            LOC=".locals 2"
+        fi
         if [[ "$RET" == "V" ]]; then
             LOGE "Cannot change return value of void method \"$METHOD\" in /$PARTITION/$FILE/$SMALI"
             return 1
         elif [[ "$RET" == "Ljava/lang/String;" ]]; then
             VALUE="\"$VALUE\""
             RET="return-object $REG"
-        elif [[ "$RET" =~ ^\[*[ZBCSIJFD]$ ]]; then
+        elif [[ "$RET" =~ ^[ZBCSIJFD]$ ]]; then
             # Boolean type
             if [[ "$RET" == "Z" ]]; then
                 if [[ "$VALUE" == "true" ]]; then
@@ -271,7 +286,7 @@ SMALI_PATCH()
             fi
 
             # Long type
-            if [[ "$RET" == "J" ]]; then
+            if [[ "$RET" == "J" || "$RET" == "D" ]]; then
                 RET="return-wide $REG"
             else
                 RET="return $REG"
@@ -301,12 +316,35 @@ SMALI_PATCH()
                 hex="${VALUE#0x}"
                 num="$((16#$hex))"
             fi
-            if [[ "$RET" == "return-wide"* ]]; then
-                VALUE="const-wide/16 $REG, $VALUE"
-            elif [ "$num" -gt "-8" ] && [ "$num" -lt "8" ]; then
-                VALUE="const/4 $REG, $VALUE"
+            # Emit signed literals instead of printf's 64-bit two's-complement
+            # output for negative integers. Smali also requires an L suffix
+            # for full-width wide constants.
+            if [[ "$RET" != "return-wide"* ]] && \
+                    [ "$num" -ge 2147483648 ] && [ "$num" -le 4294967295 ]; then
+                num="$((num - 4294967296))"
+            fi
+            if [ "$num" -lt 0 ]; then
+                VALUE="-0x$(printf '%x' "$((-num))")"
             else
+                VALUE="0x$(printf '%x' "$num")"
+            fi
+            if [[ "$RET" == "return-wide"* ]]; then
+                if [ "$num" -ge -32768 ] && [ "$num" -le 32767 ]; then
+                    VALUE="const-wide/16 $REG, $VALUE"
+                elif [ "$num" -ge -2147483648 ] && [ "$num" -le 2147483647 ]; then
+                    VALUE="const-wide/32 $REG, $VALUE"
+                else
+                    VALUE="const-wide $REG, ${VALUE}L"
+                fi
+            elif [ "$num" -ge -8 ] && [ "$num" -le 7 ]; then
+                VALUE="const/4 $REG, $VALUE"
+            elif [ "$num" -ge -32768 ] && [ "$num" -le 32767 ]; then
                 VALUE="const/16 $REG, $VALUE"
+            elif [ "$num" -ge -2147483648 ] && [ "$num" -le 2147483647 ]; then
+                VALUE="const $REG, $VALUE"
+            else
+                LOGE "Constant outside 32-bit return range for method \"$METHOD\""
+                return 1
             fi
         elif [[ "$VALUE" =~ ^\".*\"$ ]]; then
             # String value
@@ -320,7 +358,7 @@ SMALI_PATCH()
 
         awk -v FN="$METHOD" -v LOC="$LOC" -v VAL="$VALUE" -v RET="$RET" '
             BEGIN { inside = 0 }
-            /^\.method/ && index($0, FN) {
+            $1 == ".method" && $NF == FN {
                 print
                 print "    " LOC
                 print ""
@@ -354,7 +392,7 @@ SMALI_PATCH()
     elif [[ "$OPERATION" == "replace" ]]; then
         local METHOD_CONTENT
         METHOD_CONTENT="$(awk -v FN="$METHOD" '
-            /^\.method/ && index($0, FN) { inside = 1 }
+            $1 == ".method" && $NF == FN { inside = 1 }
             inside { print }
             inside && /^\.end method/ { exit }
         ' "$FILE_PATH/$SMALI")"
@@ -388,7 +426,7 @@ SMALI_PATCH()
 
         awk -v FN="$METHOD" -v STR="$VALUE" -v REP="$REPLACEMENT" '
             BEGIN { inside = 0; isline = (index(REP, "\n") > 0) }
-            /^\.method/ && index($0, FN) { inside = 1 }
+            $1 == ".method" && $NF == FN { inside = 1 }
             inside {
                 if (isline) {
                     if (index($0, STR)) {

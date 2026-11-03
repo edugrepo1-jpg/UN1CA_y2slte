@@ -63,15 +63,15 @@ PATCH_VNDK_CGROUP_RUNTIME() {
         return 1
     fi
 
-    if ! sudo -n -v &> /dev/null && ! sudo -v; then
+    if ! RUN_AS_ROOT true; then
         LOGE "Root permissions are required to rebuild the VNDK APEX"
         return 1
     fi
 
     if mountpoint -q "$MOUNT_DIR"; then
-        sudo umount "$MOUNT_DIR" || return 1
+        RUN_AS_ROOT umount "$MOUNT_DIR" || return 1
     fi
-    sudo rm -rf "$PATCH_ROOT"
+    RUN_AS_ROOT rm -rf "$PATCH_ROOT"
     mkdir -p "$PATCH_ROOT" "$MOUNT_DIR"
 
     LOG "- Extracting VNDK v$TARGET_VNDK_VERSION APEX"
@@ -88,12 +88,12 @@ PATCH_VNDK_CGROUP_RUNTIME() {
     LOG "- Decoding VNDK v$TARGET_VNDK_VERSION APEX payload"
     EVAL "apktool d -j \"$(nproc)\" -o \"$DECODED\" -r \"$ORIGINAL_APEX\""
     mkdir -p "$PAYLOAD"
-    if ! sudo mount -o ro "$DECODED/unknown/apex_payload.img" "$MOUNT_DIR"; then
+    if ! RUN_AS_ROOT mount -o ro "$DECODED/unknown/apex_payload.img" "$MOUNT_DIR"; then
         LOGE "Failed to mount the VNDK APEX payload"
         return 1
     fi
-    if ! sudo cp -a -T "$MOUNT_DIR" "$PAYLOAD"; then
-        sudo umount "$MOUNT_DIR" || true
+    if ! RUN_AS_ROOT cp -a -T "$MOUNT_DIR" "$PAYLOAD"; then
+        RUN_AS_ROOT umount "$MOUNT_DIR" || true
         LOGE "Failed to copy the VNDK APEX payload"
         return 1
     fi
@@ -102,31 +102,31 @@ PATCH_VNDK_CGROUP_RUNTIME() {
     # and resigning a valid APEX a second time.
     if [ -f "$PAYLOAD/lib/libcgrouprc.so" ] && \
             [ -f "$PAYLOAD/lib64/libcgrouprc.so" ]; then
-        sudo umount "$MOUNT_DIR" || return 1
-        sudo rm -rf "$PATCH_ROOT"
+        RUN_AS_ROOT umount "$MOUNT_DIR" || return 1
+        RUN_AS_ROOT rm -rf "$PATCH_ROOT"
         LOG "  - VNDK v$TARGET_VNDK_VERSION already contains both cgroup clients"
         return 0
     fi
 
     # Preserve the original payload metadata before adding files that do not
     # carry SELinux xattrs in the host filesystem.
-    if ! sudo find "$MOUNT_DIR" \
+    if ! RUN_AS_ROOT find "$MOUNT_DIR" \
             -exec stat -c "%n %u %g %a capabilities=0x0" "{}" \; > "$FS_CONFIG"; then
-        sudo umount "$MOUNT_DIR" || true
+        RUN_AS_ROOT umount "$MOUNT_DIR" || true
         LOGE "Failed to record VNDK APEX fs_config metadata"
         return 1
     fi
-    if ! sudo find "$MOUNT_DIR" -exec sh -c '
+    if ! RUN_AS_ROOT find "$MOUNT_DIR" -exec sh -c '
             for path do
                 label="$(getfattr -n security.selinux --only-values -h --absolute-names "$path")" || exit 1
                 printf "%s %s\n" "$path" "$label"
             done
         ' sh "{}" + > "$FILE_CONTEXTS"; then
-        sudo umount "$MOUNT_DIR" || true
+        RUN_AS_ROOT umount "$MOUNT_DIR" || true
         LOGE "Failed to record VNDK APEX SELinux contexts"
         return 1
     fi
-    sudo umount "$MOUNT_DIR" || return 1
+    RUN_AS_ROOT umount "$MOUNT_DIR" || return 1
 
     sed -i -e "s|$MOUNT_DIR |/ |g" -e "s|$MOUNT_DIR||g" "$FILE_CONTEXTS"
     sed -i -e "s|$MOUNT_DIR | |g" -e "s|$MOUNT_DIR/||g" "$FS_CONFIG"
@@ -134,15 +134,15 @@ PATCH_VNDK_CGROUP_RUNTIME() {
         -e 's|\]|\\]|g' -e 's|\*|\\*|g' "$FILE_CONTEXTS"
 
     LOG "- Adding target VNDK v30-compatible libcgrouprc.so to both payload ABIs"
-    sudo install -o 1000 -g 1000 -m 0644 "$DONOR32" "$PAYLOAD/lib/libcgrouprc.so"
-    sudo install -o 1000 -g 1000 -m 0644 "$DONOR64" "$PAYLOAD/lib64/libcgrouprc.so"
+    RUN_AS_ROOT install -o 1000 -g 1000 -m 0644 "$DONOR32" "$PAYLOAD/lib/libcgrouprc.so"
+    RUN_AS_ROOT install -o 1000 -g 1000 -m 0644 "$DONOR64" "$PAYLOAD/lib64/libcgrouprc.so"
     printf 'lib/libcgrouprc.so 1000 1000 644 capabilities=0x0\n' >> "$FS_CONFIG"
     printf 'lib64/libcgrouprc.so 1000 1000 644 capabilities=0x0\n' >> "$FS_CONFIG"
     printf '/lib/libcgrouprc\\.so u:object_r:system_lib_file:s0\n' >> "$FILE_CONTEXTS"
     printf '/lib64/libcgrouprc\\.so u:object_r:system_lib_file:s0\n' >> "$FILE_CONTEXTS"
     sort -u -o "$FS_CONFIG" "$FS_CONFIG"
     sort -u -o "$FILE_CONTEXTS" "$FILE_CONTEXTS"
-    sudo chown -hR "$(id -u):$(id -g)" "$PATCH_ROOT"
+    RUN_AS_ROOT chown -hR "$(id -u):$(id -g)" "$PATCH_ROOT"
 
     rm -f "$DECODED/unknown/apex_payload.img"
     "$SRC_DIR/scripts/build_fs_image.sh" ext4 --no-avb \
@@ -176,7 +176,7 @@ PATCH_VNDK_CGROUP_RUNTIME() {
             return 1
         fi
     done
-    sudo rm -rf "$PATCH_ROOT"
+    RUN_AS_ROOT rm -rf "$PATCH_ROOT"
     LOG "  - VNDK v$TARGET_VNDK_VERSION payload now exports both LIBCGROUPRC_30 clients"
 }
 
@@ -194,8 +194,41 @@ PATCH_VNDK_MANIFEST() {
     fi
 }
 
+VALIDATE_TARGET_VENDOR_SDK() {
+    local VENDOR_SDK STOCK_SDK VALUE FILE
+    local STOCK_VENDOR="$FW_DIR/$(tr "/" "_" <<< "$TARGET_FW_SOURCE")/vendor"
+
+    # The vendor partition can remain frozen while Samsung updates the stock
+    # system. r8s FYJ1 has system API33 and vendor API30. Neither the output
+    # framework API37 nor TARGET_PLATFORM_SDK_VERSION describes the vendor ABI.
+    VENDOR_SDK="$(GET_PROP vendor ro.vendor.build.version.sdk)" || return 1
+    STOCK_SDK=""
+    for FILE in "$STOCK_VENDOR/default.prop" "$STOCK_VENDOR/build.prop"; do
+        [ -f "$FILE" ] || continue
+        VALUE="$(GET_PROP "$FILE" ro.vendor.build.version.sdk)" || return 1
+        [ -n "$VALUE" ] || continue
+        if [[ ! "$VALUE" =~ ^[0-9]+$ ]]; then
+            ABORT "Invalid stock vendor SDK in $FILE: $VALUE"
+            return 1
+        fi
+        if [ -n "$STOCK_SDK" ] && [ "$STOCK_SDK" != "$VALUE" ]; then
+            ABORT "Conflicting vendor SDK declarations in target stock firmware"
+            return 1
+        fi
+        STOCK_SDK="$VALUE"
+    done
+    if [[ ! "$VENDOR_SDK" =~ ^[0-9]+$ ]] || [ -z "$STOCK_SDK" ]; then
+        ABORT "Cannot validate target vendor SDK against its stock firmware"
+        return 1
+    fi
+    if [ "$VENDOR_SDK" != "$STOCK_SDK" ]; then
+        ABORT "Vendor SDK $VENDOR_SDK does not match target stock vendor SDK $STOCK_SDK"
+        return 1
+    fi
+}
+
 VALIDATE_LEGACY_VNDK() {
-    local APEX_SIZE VENDOR_SDK VNDK_COUNT
+    local APEX_SIZE VNDK_COUNT
 
     if [ ! -f "$VNDK_APEX" ]; then
         ABORT "VNDK $TARGET_VNDK_VERSION APEX was not installed"
@@ -224,17 +257,15 @@ VALIDATE_LEGACY_VNDK() {
         return 1
     fi
 
-    VENDOR_SDK="$(GET_PROP vendor ro.vendor.build.version.sdk)"
-    if [ -n "$VENDOR_SDK" ] && [ "$VENDOR_SDK" -ne "$TARGET_PLATFORM_SDK_VERSION" ]; then
-        ABORT "Vendor SDK $VENDOR_SDK does not match target platform SDK $TARGET_PLATFORM_SDK_VERSION"
-        return 1
-    fi
+    VALIDATE_TARGET_VENDOR_SDK || return 1
 
     LOG "  - Legacy VNDK $TARGET_VNDK_VERSION compatibility validated ($APEX_SIZE bytes)"
 }
 # ]
 
 if [ "$TARGET_VNDK_VERSION" -le 34 ]; then
+    # Fail on an actual vendor mismatch before rebuilding the VNDK APEX.
+    VALIDATE_TARGET_VENDOR_SDK || return 1
     if [ ! -f "$VNDK_APEX" ] || [ "$SOURCE_BOARD_API_LEVEL" != "$TARGET_VNDK_VERSION" ]; then
         if [ "$SOURCE_BOARD_API_LEVEL" -le 34 ] && \
                 [ -f "$SYS_EXT_DIR/apex/com.android.vndk.v$SOURCE_BOARD_API_LEVEL.apex" ]; then
@@ -278,4 +309,4 @@ fi
 unset TARGET_CORE_VARIANT TARGET_FW_SOURCE TARGET_VNDK_VERSION
 unset SYS_EXT_DIR VINTF_MANIFEST VNDK_APEX VNDK_APEX_REL
 unset -f ADD_TARGET_VNDK_APEX PATCH_VNDK_CGROUP_RUNTIME PATCH_VNDK_MANIFEST \
-    VALIDATE_LEGACY_VNDK
+    VALIDATE_LEGACY_VNDK VALIDATE_TARGET_VENDOR_SDK

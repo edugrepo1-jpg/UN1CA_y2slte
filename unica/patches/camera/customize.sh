@@ -42,6 +42,11 @@ else
     _LOG "File not found: $SRC_DIR/target/$TARGET_CODENAME/camera/camera-feature.xml"
 fi
 
+# r8s portrait enum normalization; retain native One UI 9 HAL/video patches.
+if [[ "$TARGET_CODENAME" == "r8s" ]]; then
+    . "$MODPATH/r8s_modes.sh" || return 1
+fi
+
 LOG_STEP_IN
 if grep -q "DURING_SMARTVIEW" "$WORK_DIR/system/system/cameradata/camera-feature.xml" 2> /dev/null; then
     LOG "- Removing Smart View limitations flags"
@@ -432,6 +437,13 @@ if [ ! "$(find "$WORK_DIR/product/overlay" -maxdepth 1 -type f -name "SystemUI*"
         fi
         EVAL "sed -i \"s/config_enableDisplayCutoutProtection\\\">$SOURCE_CAMERA_SUPPORT_CUTOUT_PROTECTION/config_enableDisplayCutoutProtection\\\">$TARGET_CAMERA_SUPPORT_CUTOUT_PROTECTION/\" \"$APKTOOL_DIR/system_ext/priv-app/SystemUI/SystemUI.apk/res/values/bools.xml\""
     fi
+fi
+
+# Apply after camera library pruning so the enabled r8s Food mode keeps its
+# detector, and bind the native API37 enum to the actual target XML.
+if [[ "$TARGET_CODENAME" == "r8s" && "$SOURCE_PLATFORM_SDK_VERSION" -ge 37 ]]; then
+    . "$MODPATH/r8s_runtime.sh" || return 1
+    . "$MODPATH/r8s_hdr.sh" || return 1
 fi
 
 unset SOURCE_FIRMWARE_PATH TARGET_FIRMWARE_PATH \

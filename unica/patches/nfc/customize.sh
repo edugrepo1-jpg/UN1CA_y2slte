@@ -1,4 +1,5 @@
 # [
+source "$SRC_DIR/scripts/utils/nfc_utils.sh" || return 1
 _LOG() { if $DEBUG; then LOGW "$1"; else ABORT "$1"; fi }
 
 _IMPORT_LEGACY_NXP_JNI()
@@ -195,7 +196,8 @@ fi
 # throws NoSuchMethodError and com.android.nfc crash-loops on every start.
 # Let the APEX keep ownership of the arm64 JNI.
 if [ -f "$WORK_DIR/system/system/lib64/libnfc_nci_jni.so" ] && \
-        ls "$FW_DIR/$SOURCE_FIRMWARE_PATH/system/system/apex/"com.android.nfcservices.cap* >/dev/null 2>&1; then
+        { HAS_NFC_SERVICE_APEX "$WORK_DIR" || \
+          HAS_NFC_SERVICE_APEX "$FW_DIR/$SOURCE_FIRMWARE_PATH"; }; then
     DELETE_FROM_WORK_DIR "system" "system/lib64/libnfc_nci_jni.so"
 fi
 

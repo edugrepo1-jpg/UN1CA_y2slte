@@ -90,28 +90,26 @@ EXTRACT_PAYLOAD()
 {
     LOG_STEP_IN "- Unpacking apex_payload.img"
 
-    if ! sudo -n -v &> /dev/null; then
-        LOG "\033[0;33m! Asking user for sudo password\033[0m"
-        if ! sudo -v 2> /dev/null; then
-            ABORT "Root permissions are required to unpack APEX image"
-        fi
+    if ! RUN_AS_ROOT true; then
+        ABORT "Root or passwordless sudo is required to unpack APEX image"
+        return 1
     fi
 
     LOG_STEP_OUT
 
     mkdir -p "$TMP_DIR/unknown/apex_payload"
     mkdir -p "$TMP_DIR/tmp_out"
-    EVAL "sudo mount -o ro \"$TMP_DIR/unknown/apex_payload.img\" \"$TMP_DIR/tmp_out\""
-    EVAL "sudo cp -a -T \"$TMP_DIR/tmp_out\" \"$TMP_DIR/unknown/apex_payload\""
-    sudo chown -hR "$(whoami):$(whoami)" "$TMP_DIR/unknown/apex_payload"
+    EVAL "RUN_AS_ROOT mount -o ro \"$TMP_DIR/unknown/apex_payload.img\" \"$TMP_DIR/tmp_out\""
+    EVAL "RUN_AS_ROOT cp -a -T \"$TMP_DIR/tmp_out\" \"$TMP_DIR/unknown/apex_payload\""
+    RUN_AS_ROOT chown -hR "$(whoami):$(whoami)" "$TMP_DIR/unknown/apex_payload"
     if [ -d "$TMP_DIR/unknown/apex_payload/lost+found" ]; then
         rm -rf "$TMP_DIR/unknown/apex_payload/lost+found"
     fi
 
     LOG "- Generating fs_config/file_context for apex_payload.img"
 
-    EVAL "sudo find \"$TMP_DIR/tmp_out\" | sudo xargs -I \"{}\" -P \"$(nproc)\" stat -c \"%n %u %g %a capabilities=0x0\" \"{}\" > \"$TMP_DIR/unknown/fs_config-apex_payload\""
-    EVAL "sudo find \"$TMP_DIR/tmp_out\" | sudo xargs -I \"{}\" -P \"$(nproc)\" sh -c 'echo \"\$1 \$(getfattr -n security.selinux --only-values -h --absolute-names \"\$1\")\"' \"sh\" \"{}\" > \"$TMP_DIR/unknown/file_context-apex_payload\""
+    EVAL "RUN_AS_ROOT find \"$TMP_DIR/tmp_out\" | RUN_AS_ROOT xargs -I \"{}\" -P \"$(nproc)\" stat -c \"%n %u %g %a capabilities=0x0\" \"{}\" > \"$TMP_DIR/unknown/fs_config-apex_payload\""
+    EVAL "RUN_AS_ROOT find \"$TMP_DIR/tmp_out\" | RUN_AS_ROOT xargs -I \"{}\" -P \"$(nproc)\" sh -c 'echo \"\$1 \$(getfattr -n security.selinux --only-values -h --absolute-names \"\$1\")\"' \"sh\" \"{}\" > \"$TMP_DIR/unknown/file_context-apex_payload\""
     sort -o "$TMP_DIR/unknown/file_context-apex_payload" "$TMP_DIR/unknown/file_context-apex_payload"
     sort -o "$TMP_DIR/unknown/fs_config-apex_payload" "$TMP_DIR/unknown/fs_config-apex_payload"
     sed -i -e "s|$TMP_DIR/tmp_out |/ |g" -e "s|$TMP_DIR/tmp_out||g" "$TMP_DIR/unknown/file_context-apex_payload"
@@ -119,7 +117,7 @@ EXTRACT_PAYLOAD()
         -e "s|\]|\\\]|g" -e "s|\*|\\\*|g" "$TMP_DIR/unknown/file_context-apex_payload"
     sed -i -e "s|$TMP_DIR/tmp_out | |g" -e "s|$TMP_DIR/tmp_out/||g" "$TMP_DIR/unknown/fs_config-apex_payload"
 
-    EVAL "sudo umount \"$TMP_DIR/tmp_out\""
+    EVAL "RUN_AS_ROOT umount \"$TMP_DIR/tmp_out\""
     rm -rf "$TMP_DIR/tmp_out" "$TMP_DIR/unknown/apex_payload.img"
 }
 

@@ -1,3 +1,6 @@
+# Verify generated SDK-backed Hub code before modifying the firmware.
+python3 "$MODPATH/undervolt/verify.py" || return 1
+
 # Show battery regulatory info in Settings
 # Requires SEM_BATTERY_PROPERTY_IC_AUTHENTICATION_RESULT support
 if [ "$(GET_FLOATING_FEATURE_CONFIG "SEC_FLOATING_FEATURE_BATTERY_SUPPORT_BSOH_SETTINGS")" ]; then

@@ -166,6 +166,15 @@ fi
 # SEC_PRODUCT_FEATURE_AUDIO_SUPPORT_VIRTUAL_VIBRATION_SOUND
 if $SOURCE_AUDIO_SUPPORT_VIRTUAL_VIBRATION_SOUND; then
     if ! $TARGET_AUDIO_SUPPORT_VIRTUAL_VIBRATION_SOUND; then
+        if [[ "$TARGET_CODENAME" == "r8s" && "$SOURCE_PLATFORM_SDK_VERSION" -ge 37 ]]; then
+            # Samsung API37 EZJ1 changed audio and vibrator service method
+            # layout. The generic virtual_vib patch removes/reorders hundreds
+            # of instructions across ten unrelated Bluetooth/haptic classes
+            # and provably does NOT apply on this donor (build 41345814832).
+            # For r8s preserve these services and suppress only the unsupported
+            # virtual-vibration SOUND methods through their exact descriptors.
+            . "$MODPATH/audio/virtual_vib/disable_native.sh" || return 1
+        else
         APPLY_PATCH "system" "system/framework/framework.jar" \
             "$MODPATH/audio/virtual_vib/framework.jar/0001-Disable-virtual-vibration-support.patch"
         APPLY_PATCH "system" "system/framework/services.jar" \
@@ -181,6 +190,7 @@ if $SOURCE_AUDIO_SUPPORT_VIRTUAL_VIBRATION_SOUND; then
             "$MODPATH/audio/virtual_vib/SecSettings.apk/0001-Disable-virtual-vibration-support.patch"
         APPLY_PATCH "system" "system/priv-app/SettingsProvider/SettingsProvider.apk" \
             "$MODPATH/audio/virtual_vib/SettingsProvider.apk/0001-Disable-virtual-vibration-support.patch"
+        fi
     fi
 else
     if $TARGET_AUDIO_SUPPORT_VIRTUAL_VIBRATION_SOUND; then
@@ -456,11 +466,17 @@ if [[ "$SOURCE_FINGERPRINT_CONFIG_SENSOR" != "$TARGET_FINGERPRINT_CONFIG_SENSOR"
                     ADD_TO_WORK_DIR "r9qxxx" "system" "system/lib64/libgui.so" 0 0 644 "u:object_r:system_lib_file:s0"
                     ADD_TO_WORK_DIR "r9qxxx" "system" "system/lib64/libui.so" 0 0 644 "u:object_r:system_lib_file:s0"
                 elif [[ "$TARGET_OS_SINGLE_SYSTEM_IMAGE" == "essi" ]]; then
-                    ADD_TO_WORK_DIR "r9sxxx" "system" "system/bin/surfaceflinger" 0 2000 755 "u:object_r:surfaceflinger_exec:s0"
-                    ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/libgui.so" 0 0 644 "u:object_r:system_lib_file:s0"
-                    ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/libui.so" 0 0 644 "u:object_r:system_lib_file:s0"
-                    ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib64/libgui.so" 0 0 644 "u:object_r:system_lib_file:s0"
-                    ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib64/libui.so" 0 0 644 "u:object_r:system_lib_file:s0"
+                    if [[ "$TARGET_CODENAME" == "r8s" ]] && $PRESERVE_NATIVE_DISPLAY_STACK; then
+                        # Do not replace API37 SurfaceFlinger, libgui, libui with
+                        # S21/S22 Android 13 binaries. Preserve Android17 ABI.
+                        LOG "- GM HUB r8s: preserving Android 17 source display stack"
+                    else
+                        ADD_TO_WORK_DIR "r9sxxx" "system" "system/bin/surfaceflinger" 0 2000 755 "u:object_r:surfaceflinger_exec:s0"
+                        ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/libgui.so" 0 0 644 "u:object_r:system_lib_file:s0"
+                        ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib/libui.so" 0 0 644 "u:object_r:system_lib_file:s0"
+                        ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib64/libgui.so" 0 0 644 "u:object_r:system_lib_file:s0"
+                        ADD_TO_WORK_DIR "r9sxxx" "system" "system/lib64/libui.so" 0 0 644 "u:object_r:system_lib_file:s0"
+                    fi
                 else
                     ABORT "Unknown SSI: $TARGET_OS_SINGLE_SYSTEM_IMAGE"
                 fi
@@ -469,19 +485,36 @@ if [[ "$SOURCE_FINGERPRINT_CONFIG_SENSOR" != "$TARGET_FINGERPRINT_CONFIG_SENSOR"
                     "$WORK_DIR/system/system/lib64/libgui.so" \
                     "$WORK_DIR/system/system/lib64/libui.so"
 
-                ADD_TO_WORK_DIR "r9qxxx" "system" "system/priv-app/BiometricSetting/BiometricSetting.apk" 0 0 644 "u:object_r:system_file:s0"
+                if $PRESERVE_NATIVE_FINGERPRINT_UI; then
+                    DECODE_APK "system" "system/priv-app/BiometricSetting/BiometricSetting.apk" || return 1
+                    python3 "$SRC_DIR/target/r8s/patch_biometric_sensor_flags.py" \
+                        "$APKTOOL_DIR/system/priv-app/BiometricSetting/BiometricSetting.apk" --ui || return 1
+                else
+                    ADD_TO_WORK_DIR "r9qxxx" "system" "system/priv-app/BiometricSetting/BiometricSetting.apk" 0 0 644 "u:object_r:system_file:s0"
+                fi
 
                 APPLY_PATCH "system" "system/framework/framework.jar" \
                     "$MODPATH/fingerprint/optical_fod/framework.jar/0001-Add-optical-FOD-support.patch"
-                APPLY_PATCH "system" "system/framework/services.jar" \
-                    "$MODPATH/fingerprint/optical_fod/services.jar/0001-Add-optical-FOD-support.patch"
+                if [[ "$TARGET_CODENAME" == "r8s" && "$SOURCE_PLATFORM_SDK_VERSION" -ge 37 ]]; then
+                    DECODE_APK "system" "system/framework/services.jar" || return 1
+                    python3 "$SRC_DIR/target/r8s/patch_biometric_sensor_flags.py" \
+                        "$APKTOOL_DIR/system/framework/services.jar" || return 1
+                else
+                    APPLY_PATCH "system" "system/framework/services.jar" \
+                        "$MODPATH/fingerprint/optical_fod/services.jar/0001-Add-optical-FOD-support.patch"
+                fi
 
                 if $PRESERVE_NATIVE_FINGERPRINT_UI; then
                     # The old app patches were generated from the first
                     # Android 16 implementation.  Current Settings/SystemUI
                     # already consume the optical feature exposed above and
                     # their classes/control flow have since been redesigned.
-                    LOG "Using native Android 16 optical fingerprint UI"
+                    if [[ "$TARGET_CODENAME" == "r8s" ]]; then
+                        DECODE_APK "system_ext" "priv-app/SystemUI/SystemUI.apk" || return 1
+                        python3 "$SRC_DIR/target/r8s/patch_optical_fingerprint_ui.py" \
+                            "$APKTOOL_DIR/system_ext/priv-app/SystemUI/SystemUI.apk" || return 1
+                    fi
+                    LOG "Using native optical fingerprint UI with target sensor capability"
                 else
                     APPLY_PATCH "system" "system/priv-app/SecSettings/SecSettings.apk" \
                         "$MODPATH/fingerprint/optical_fod/SecSettings.apk/0001-Add-optical-FOD-support.patch"

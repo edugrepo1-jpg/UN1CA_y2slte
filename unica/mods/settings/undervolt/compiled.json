@@ -1,0 +1,21 @@
+{
+  "sdk_api": 37,
+  "min_api": 33,
+  "sources": {
+    "undervolt/src/com/gmhub/uv/UndervoltPanel.java": "f21c260dc6c2d91108c112d2e08af4123a7fca5553e689c4844899045e25fc79",
+    "undervolt/src/com/gmhub/uv/UvBackend.java": "ff2f4ad2c8418dc84d6a87e3ea1f7359f545800f454815d0f5cd2c19d11a01ca"
+  },
+  "generated": {
+    "SecSettings.apk/smali_classes4/com/gmhub/uv/UndervoltPanel$$ExternalSyntheticLambda0.smali": "66aa8fab931a9c958a0904350369819210eb9270754eefc72c017e89702a2192",
+    "SecSettings.apk/smali_classes4/com/gmhub/uv/UndervoltPanel$$ExternalSyntheticLambda1.smali": "05f9f2d1e6af1000b4a41760f29f8058eb32b8f41de9308d455e5ad6cb2ece55",
+    "SecSettings.apk/smali_classes4/com/gmhub/uv/UndervoltPanel$$ExternalSyntheticLambda2.smali": "678d91bbb4ac06656df5412fe3d2a60374ac025d786dbd8848ff80ba3e068c2b",
+    "SecSettings.apk/smali_classes4/com/gmhub/uv/UndervoltPanel$$ExternalSyntheticLambda3.smali": "b845f9aaa48ed508d3e5d4cbb4198a5d414e00e4198e676d7a2c1a01479fd8ad",
+    "SecSettings.apk/smali_classes4/com/gmhub/uv/UndervoltPanel$$ExternalSyntheticLambda4.smali": "b7a3a6b21f1dcc5cf60c39bfa4eb38532135f1e10435d882b1c58995ee45aa24",
+    "SecSettings.apk/smali_classes4/com/gmhub/uv/UndervoltPanel$$ExternalSyntheticLambda5.smali": "78624e85aebb8dec550c2740dd443d76af9a898f2dfae5465d3d2f18def72a6d",
+    "SecSettings.apk/smali_classes4/com/gmhub/uv/UndervoltPanel$$ExternalSyntheticLambda6.smali": "b796d94aa2f900314c9bc61909d4ed08623dc5a88c782e3da49a98b5d1b87c6d",
+    "SecSettings.apk/smali_classes4/com/gmhub/uv/UndervoltPanel$$ExternalSyntheticLambda7.smali": "7c93c3e97e3c7af9b01e66d8a0a83a68465840a23755f1cf10c94677490ffdc0",
+    "SecSettings.apk/smali_classes4/com/gmhub/uv/UndervoltPanel$$ExternalSyntheticLambda8.smali": "24b045ee4e945bde888036c8a6e374604ec78ae83af4cd1e4efac4dbdffd41d4",
+    "SecSettings.apk/smali_classes4/com/gmhub/uv/UndervoltPanel.smali": "b679723341c513a1f2b096bbecdb2f3ae89d7084e5cdf6a1280ee31a8597eadb",
+    "SecSettings.apk/smali_classes4/com/gmhub/uv/UvBackend.smali": "120d6d20b6469d1d44bef588539aab84cc59d4d6b7879a206fd0785b6c7ca086"
+  }
+}

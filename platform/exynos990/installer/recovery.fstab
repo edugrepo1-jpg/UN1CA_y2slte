@@ -21,3 +21,5 @@ odm                             /odm            erofs   ro           logical,fir
 /dev/block/by-name/misc         /misc           emmc    defaults     recoveryonly
 /dev/block/by-name/prism        /prism          ext4    ro           recoveryonly
 /dev/block/by-name/optics       /optics         ext4    ro           recoveryonly
+
+/dev/block/by-name/up_param      /up_param       emmc    defaults     recoveryonly

@@ -5,7 +5,17 @@
     <com.samsung.android.settings.widget.SecInsetCategoryPreference />
     <Preference android:title="@string/unica_rom_version_title" android:key="unica_rom_version" android:summary="@string/summary_placeholder" settings:controller="io.mesalabs.unica.settings.ROMVersionPreferenceController" />
     <Preference android:title="@string/unica_device_name_title" android:key="unica_device_name" android:summary="@string/summary_placeholder" settings:controller="io.mesalabs.unica.settings.DeviceNamePreferenceController" />
+    <Preference android:title="@string/gm_hub_maintainer_title" android:summary="@string/gm_hub_maintainer_name" android:key="gm_hub_maintainer" android:selectable="false" />
+    <Preference android:title="@string/gm_hub_kernel_title" android:summary="@string/gm_hub_kernel_name" android:key="gm_hub_kernel" android:selectable="false" />
     <com.samsung.android.settings.widget.SecInsetCategoryPreference />
+    <PreferenceCategory android:title="@string/gm_hub_category_paradox" />
+    <Preference android:icon="@drawable/ic_unica_settings_spoof" android:title="Undervolt" android:summary="Ajustes de tensão do GMKernel" android:key="gm_hub_undervolt" android:fragment="com.paradox.hub.UndervoltFragment" />
+    <Preference android:icon="@drawable/ic_unica_settings_ui" android:title="@string/gm_glass_title" android:summary="@string/gm_glass_home_summary" android:key="gm_hub_liquid_glass" android:fragment="com.paradox.hub.GlassSettingsFragment" />
+    <Preference android:icon="@drawable/ic_unica_settings_ui" android:title="@string/gm_hub_paradox_tweaks" android:key="gm_hub_paradox_tweaks" android:fragment="com.paradox.hub.ParadoxCenterFragment" />
+    <Preference android:icon="@drawable/ic_unica_settings_extra" android:title="@string/paradox_core_modes_title" android:key="gm_hub_core_modes" android:fragment="com.paradox.hub.ParadoxCoreModesFragment" />
+    <Preference android:icon="@drawable/ic_unica_settings_spoof" android:title="@string/paradox_ram_title" android:key="gm_hub_memory" android:fragment="com.paradox.hub.ParadoxMemoryFragment" />
+    <Preference android:icon="@drawable/ic_unica_settings_about" android:title="@string/paradox_cat_battery" android:key="gm_hub_battery" android:fragment="com.paradox.hub.ParadoxBatteryFragment" />
+    <PreferenceCategory android:title="@string/gm_hub_category_unica" />
     <io.mesalabs.unica.settings.preference.IconPreference android:icon="@drawable/ic_unica_settings_ui" android:title="@string/unica_ui_settings_title" android:key="unica_ui_settings" android:fragment="io.mesalabs.unica.settings.ui.UISettingsFragment" settings:controller="io.mesalabs.unica.settings.ui.UISettingsPreferenceController" />
     <com.samsung.android.settings.widget.SecInsetCategoryPreference />
     <io.mesalabs.unica.settings.preference.IconPreference android:icon="@drawable/ic_unica_settings_spoof" android:title="@string/unica_spoof_settings_title" android:key="unica_spoof_settings" android:fragment="io.mesalabs.unica.settings.spoof.SpoofSettingsFragment" settings:controller="io.mesalabs.unica.settings.spoof.SpoofSettingsPreferenceController" />

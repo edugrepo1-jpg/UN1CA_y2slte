@@ -1,0 +1,5 @@
+id=r8s_ssrm_multiwindow
+name=Keep multi-windows when SSRM requests thermal disable
+author=GM Nevz / UN1CA port contributors
+version=1
+description=Reimplements the narrowly-scoped OneLab SSRM caller policy while leaving all independent SDHMS/thermal safety mechanisms operational.

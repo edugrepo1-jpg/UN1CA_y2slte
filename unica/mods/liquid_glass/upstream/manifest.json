@@ -1,0 +1,23 @@
+[
+  {
+    "id": "qwea",
+    "repository": "QWEA0/Liquid-Glass-Android",
+    "commit": "16afe4d8b5d08a370d3f8c50b08d7f5c6eb5da4d",
+    "path": "liquidglass/src/main/java/com/example/liquidglass/GlassLensRenderer.kt",
+    "license": "MIT"
+  },
+  {
+    "id": "kyant",
+    "repository": "Kyant0/AndroidLiquidGlass",
+    "commit": "65ab177e90e5c1d8c62e70cf7755841982da65f6",
+    "path": "backdrop/src/commonMain/kotlin/com/kyant/backdrop/internal/Shaders.kt",
+    "license": "Apache-2.0"
+  },
+  {
+    "id": "color",
+    "repository": "AYwlilwYA/ColorOS16-LiquidGlass",
+    "commit": "b3757f2542bc680c0b586ef97aa83fc7c268ef5c",
+    "path": "app/src/main/kotlin/com/coloros16/liquidglass/liquidglass/LiquidGlassShader.kt",
+    "license": "GPL-3.0"
+  }
+]

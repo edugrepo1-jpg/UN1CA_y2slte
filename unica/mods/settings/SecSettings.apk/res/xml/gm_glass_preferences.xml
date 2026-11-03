@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" xmlns:settings="http://schemas.android.com/apk/res-auto" android:title="@string/gm_glass_title" settings:hierarchicalParentFragment="io.mesalabs.unica.settings.UnicaSettingsFragment">
+    <ListPreference android:key="gmhub_liquid_glass_engine" android:title="@string/gm_glass_engine_title" android:entries="@array/gm_glass_engines" android:entryValues="@array/gm_glass_engine_values" android:defaultValue="0" android:persistent="false" android:summary="%s" />
+    <Preference android:key="gm_glass_scope" android:title="@string/gm_glass_scope_title" android:summary="@string/gm_glass_scope_summary" android:selectable="false" />
+    <Preference android:key="gm_glass_apply" android:title="@string/gm_glass_apply_title" android:summary="@string/gm_glass_apply_summary" android:selectable="false" />
+    <PreferenceCategory android:title="@string/gm_glass_title">
+        <Preference android:key="gm_glass_qwea_info" android:title="@string/gm_glass_qwea" android:summary="@string/gm_glass_qwea_summary" android:selectable="false" />
+        <Preference android:key="gm_glass_kyant_info" android:title="@string/gm_glass_kyant" android:summary="@string/gm_glass_kyant_summary" android:selectable="false" />
+        <Preference android:key="gm_glass_color_info" android:title="@string/gm_glass_color" android:summary="@string/gm_glass_color_summary" android:selectable="false" />
+    </PreferenceCategory>
+    <Preference android:key="gm_glass_policy" android:title="@string/gm_glass_policy_title" android:summary="@string/gm_glass_policy_summary" android:selectable="false" />
+</PreferenceScreen>

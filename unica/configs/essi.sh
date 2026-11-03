@@ -3,24 +3,20 @@
 
 # UN1CA configuration file for Exynos devices (essi)
 
-# Galaxy S24+ (Exynos 2400) (One UI 8.5)
+# Galaxy S24+ SM-S926B (Exynos 2400), stable One UI 9 / Android 17, EUX
 # Keep the tested S926B release pinned so framework/display behaviour is
 # reproducible instead of silently moving with monthly FUS updates.
 SOURCE_FIRMWARE="SM-S926B/EUX/350330051234562"
-SOURCE_FIRMWARE_VERSION=""
+SOURCE_FIRMWARE_VERSION="S926BXXSIEZJ1/S926BOXMIEZJ1/S926BXXSIEZJ1"
 SOURCE_EXTRA_FIRMWARES=()
 SOURCE_PLATFORM_SDK_VERSION=37
 # S926B launched with Android 14 (API 34).
 SOURCE_PRODUCT_SHIPPING_API_LEVEL=34
 SOURCE_BOARD_API_LEVEL=34
 SOURCE_SUPER_GROUP_NAME="group_basic"
-# S926B already ships the Android 16 display stack (dynamic resolution and
-# native 24/10/30/48/60/80/120-Hz policy). Do not apply y2s resolution/HFR
-# compatibility patches on top of it.
+# Android 17 source display stack requires exact Exynos 990 vendor ABI validation.
 SOURCE_USE_NATIVE_DISPLAY_STACK=true
-# Current Android 16 Settings/SystemUI use the generic fingerprint feature
-# gates and already support optical UDFPS.  Only the legacy HIDL/framework
-# sensor mapping still needs conversion when the target is optical.
+# Android 17 native fingerprint UI must be validated against S926B EZJ1 resources and DEX.
 SOURCE_USE_NATIVE_FINGERPRINT_UI=true
 # The current services.jar gates the hardware mDNIe paths through A11yRune.
 # Its classes were redesigned, so the old control-flow transplant must not be

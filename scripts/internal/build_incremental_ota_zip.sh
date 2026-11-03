@@ -154,7 +154,7 @@ GENERATE_OTA_METADATA()
     local PROTO_FILE="$SRC_DIR/external/android-tools/vendor/build/tools/releasetools/ota_metadata.proto"
 
     local DEVICE
-    local RELEASE
+    local SDK_LEVEL
     local SOURCE_INCREMENTAL
     local TARGET_INCREMENTAL
     local TIMESTAMP
@@ -163,7 +163,11 @@ GENERATE_OTA_METADATA()
     local TARGET_FINGERPRINT
 
     DEVICE="$(grep "^device" <<< "$TARGET_BUILD_INFO" | cut -d "=" -f 2 -s)"
-    RELEASE="$(grep "^os_version" <<< "$TARGET_BUILD_INFO" | cut -d "=" -f 2 -s)"
+    SDK_LEVEL="$(awk -F= '$1 == "platform_sdk_version" { print $2; exit }' <<< "$TARGET_BUILD_INFO")"
+    if [[ ! "$SDK_LEVEL" =~ ^[0-9]+$ ]] || [ "$SDK_LEVEL" -lt 1 ]; then
+        LOGE "Target-files lack a valid platform_sdk_version; regenerate them with create_target_files_zip"
+        return 1
+    fi
     SOURCE_INCREMENTAL="$(grep "^build_incremental" <<< "$SOURCE_BUILD_INFO" | cut -d "=" -f 2 -s)"
     TARGET_INCREMENTAL="$(grep "^build_incremental" <<< "$TARGET_BUILD_INFO" | cut -d "=" -f 2 -s)"
     TIMESTAMP="$(grep "^build_date" <<< "$TARGET_BUILD_INFO" | cut -d "=" -f 2 -s)"
@@ -185,7 +189,7 @@ GENERATE_OTA_METADATA()
         MESSAGE+=", build: \\\"$TARGET_FINGERPRINT\\\""
         MESSAGE+=", build_incremental: \\\"$TARGET_INCREMENTAL\\\""
         MESSAGE+=", timestamp: $TIMESTAMP"
-        MESSAGE+=", sdk_level: \\\"$RELEASE\\\""
+        MESSAGE+=", sdk_level: \\\"$SDK_LEVEL\\\""
         MESSAGE+=", security_patch_level: \\\"$SECURITY_PATCH_LEVEL\\\"}"
         MESSAGE+=", required_cache: $(CALCULATE_MIN_CACHE_SIZE false)"
 
@@ -198,7 +202,7 @@ GENERATE_OTA_METADATA()
         echo "ota-type=BLOCK"
         echo "post-build=$TARGET_FINGERPRINT"
         echo "post-build-incremental=$TARGET_INCREMENTAL"
-        echo "post-sdk-level=$RELEASE"
+        echo "post-sdk-level=$SDK_LEVEL"
         echo "post-security-patch-level=$SECURITY_PATCH_LEVEL"
         echo "post-timestamp=$TIMESTAMP"
         echo "pre-build=$SOURCE_FINGERPRINT"
@@ -452,8 +456,8 @@ if ! unzip -l "$TARGET_ZIP" | grep -q "build_info.txt" || unzip -l "$TARGET_ZIP"
 fi
 
 [ -d "$TMP_DIR" ] && rm -rf "$TMP_DIR"
-mkdir -p "$TMP_DIR/META-INF/com/google/android"
-cp -a "$SRC_DIR/prebuilts/bootable/deprecated-ota/updater" "$TMP_DIR/META-INF/com/google/android/update-binary"
+mkdir -p "$TMP_DIR/META-INF/com/google/android" || exit 1
+cp -a "$SRC_DIR/prebuilts/bootable/deprecated-ota/updater" "$TMP_DIR/META-INF/com/google/android/update-binary" || exit 1
 
 LOG "- Extracting source files"
 EVAL "unzip -o \"$SOURCE_ZIP\" -d \"$TMP_DIR/source\"" || exit 1
@@ -525,13 +529,13 @@ done < <(find "$TMP_DIR/source" -maxdepth 1 -type f -name "*.img")
 rm -rf "$TMP_DIR/source" "$TMP_DIR/target"
 
 LOG "- Generating updater-script"
-GENERATE_UPDATER_SCRIPT
+GENERATE_UPDATER_SCRIPT || exit 1
 
 LOG "- Generating build_info.txt"
 PRINT_BUILD_INFO "$SOURCE_BUILD_INFO" "$TARGET_BUILD_INFO" > "$TMP_DIR/build_info.txt" || exit 1
 
 LOG "- Generating OTA metadata"
-GENERATE_OTA_METADATA
+GENERATE_OTA_METADATA || exit 1
 
 if [ -d "$SRC_DIR/target/$TARGET_CODENAME/installer/root" ]; then
     LOG "- Copying target custom install files"
@@ -560,7 +564,7 @@ if ! $DEBUG || $ROM_IS_OFFICIAL; then
     EVAL "signapk -w \"$PUBLIC_KEY_PATH\" \"$PRIVATE_KEY_PATH\" \"$TMP_DIR/rom.zip\" \"$OUTPUT_FILE\"" || exit 1
     rm -f "$TMP_DIR/rom.zip"
 else
-    mv -f "$TMP_DIR/rom.zip" "$OUTPUT_FILE"
+    mv -f "$TMP_DIR/rom.zip" "$OUTPUT_FILE" || exit 1
 fi
 
 exit 0

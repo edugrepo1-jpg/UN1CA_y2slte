@@ -88,7 +88,7 @@ if command -v debugfs > /dev/null 2>&1; then
     WFD_I18N_READ() {
         debugfs -R "dump $1 $2" "$WFD_I18N_PAYLOAD" > /dev/null 2>&1
     }
-elif sudo -n mount -o ro "$WFD_I18N_PAYLOAD" "$WFD_I18N_TMP/mnt" 2> /dev/null; then
+elif RUN_AS_ROOT mount -o ro "$WFD_I18N_PAYLOAD" "$WFD_I18N_TMP/mnt" 2> /dev/null; then
     # e2fsprogs is not guaranteed on the build host, so fall back to mounting
     # the payload the way the tethering APEX patch already does.
     WFD_I18N_MOUNTED=true
@@ -96,7 +96,7 @@ elif sudo -n mount -o ro "$WFD_I18N_PAYLOAD" "$WFD_I18N_TMP/mnt" 2> /dev/null; t
         cp -a -f "$WFD_I18N_TMP/mnt$1" "$2"
     }
 else
-    ABORT "Neither debugfs nor a usable sudo mount is available to read the i18n APEX"
+    ABORT "Neither debugfs nor a usable RUN_AS_ROOT mount is available to read the i18n APEX"
     return 1
 fi
 
@@ -118,7 +118,7 @@ for WFD_I18N_LIB in $WFD_I18N_LIBS; do
 done
 
 if $WFD_I18N_MOUNTED; then
-    sudo umount "$WFD_I18N_TMP/mnt" || true
+    RUN_AS_ROOT umount "$WFD_I18N_TMP/mnt" || true
 fi
 rm -rf "$WFD_I18N_TMP"
 unset -f WFD_I18N_READ

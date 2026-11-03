@@ -1,11 +1,11 @@
 if [ "$SOURCE_PLATFORM_SDK_VERSION" -ge "36" ]; then
-    # Android 16 moved Knox, DualDAR, SDP and HDM implementation details and
+    # Android 16+ moved Knox, DualDAR, SDP and HDM implementation details and
     # several of their framework classes are shared by non-Knox services.
     # Deleting the legacy class set leaves dangling references. Keep the
     # platform implementation intact and disable only the externally visible
     # services through stable feature gates; KnoxPatch handles integrity
     # compatibility without changing framework ABIs.
-    LOG "- Using non-destructive Android 16 Knox compatibility mode"
+    LOG "- Using non-destructive Android 16+ Knox compatibility mode"
     SET_PROP_IF_DIFF "vendor" "ro.security.fips.ux" "Disabled"
 
     APPLY_PATCH "system" "system/framework/services.jar" \
